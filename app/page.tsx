@@ -23,7 +23,14 @@ interface InspectResult {
   analysis: string
 }
 
-type Tab = 'search' | 'inspect'
+interface ProductInfo {
+  name: string
+  url: string
+  description: string
+  features: string
+}
+
+type Tab = 'search' | 'inspect' | 'product'
 
 /* ─── HELPERS ───────────────────────────────────────────────────────── */
 function timeAgo(unix: number) {
@@ -33,54 +40,46 @@ function timeAgo(unix: number) {
   return `${Math.floor(sec / 86400)}d ago`
 }
 
-function esc(str: string) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
 /* ─── STYLES (CSS-in-JS object) ─────────────────────────────────────── */
 const S: Record<string, React.CSSProperties> = {
-  // layout
   app: { maxWidth: 1100, margin: '0 auto', padding: '0 24px 80px', position: 'relative', zIndex: 1 },
   gridBg: {
     position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
     backgroundImage: 'linear-gradient(rgba(255,69,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,69,0,0.04) 1px,transparent 1px)',
     backgroundSize: '40px 40px',
   },
-  // header
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '32px 0 32px', borderBottom: '1px solid #e0e0e0', marginBottom: 32 },
   logo: { display: 'flex', alignItems: 'center', gap: 12 },
   logoIcon: { width: 38, height: 38, background: '#ff4500', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 17, color: '#fff' },
   logoText: { fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 22, letterSpacing: -0.5 },
   headerTag: { fontSize: 13, color: '#999', letterSpacing: 2, textTransform: 'uppercase' as const },
-  // panel
   panel: { background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: 14, padding: 28, marginBottom: 22 },
   panelTitle: { fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 2, textTransform: 'uppercase' as const, color: '#999', marginBottom: 18 },
-  // grid
-  grid3: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 18 },
-  grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 },
-  // form
   label: { display: 'block', fontSize: 13, color: '#888', letterSpacing: 1.5, textTransform: 'uppercase' as const, marginBottom: 8 },
   input: { width: '100%', background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: 15, padding: '12px 14px', outline: 'none' },
-  // tabs
   tabs: { display: 'flex', gap: 0, background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: 12, padding: 5, marginBottom: 22, width: 'fit-content' },
   tabBtn: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, fontWeight: 600, padding: '10px 24px', border: 'none', borderRadius: 9, cursor: 'pointer', letterSpacing: 0.5, transition: 'all 0.15s' },
-  // button
   btn: { background: '#ff4500', border: 'none', borderRadius: 10, color: '#fff', fontFamily: 'IBM Plex Mono, monospace', fontSize: 15, fontWeight: 600, padding: '12px 24px', cursor: 'pointer', whiteSpace: 'nowrap' as const, letterSpacing: 0.5, transition: 'background 0.15s' },
   btnGhost: { background: 'transparent', border: '1px solid #e0e0e0', color: '#888', borderRadius: 10, fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '9px 16px', cursor: 'pointer' },
   btnSm: { padding: '9px 16px', fontSize: 14 },
-  // status
   statusBar: { display: 'flex', alignItems: 'center', gap: 12, padding: '13px 18px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: 10, marginBottom: 22, fontSize: 14, color: '#888' },
-  // tag
   tag: { display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.25)', borderRadius: 6, padding: '5px 12px', fontSize: 14, color: '#e03d00' },
-  // card
   card: { background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: 14, marginBottom: 16, overflow: 'hidden' },
   cardHeader: { padding: '18px 22px 14px', borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 },
   subBadge: { fontSize: 13, fontWeight: 600, color: '#ff4500', background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.2)', borderRadius: 6, padding: '3px 10px' },
   postTitle: { fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 600, lineHeight: 1.4, marginTop: 6, color: '#1a1a1a' },
-  // analysis
   analysisBox: { background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, padding: 18, fontSize: 14, lineHeight: 1.9, color: '#444', whiteSpace: 'pre-wrap' as const },
   divider: { height: 1, background: '#e0e0e0', margin: '18px 0' },
+  lengthBar: { display: 'flex', gap: 0, background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, padding: 3, overflow: 'hidden' },
+  lengthPill: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, fontWeight: 600, padding: '7px 14px', border: 'none', cursor: 'pointer', borderRadius: 8, transition: 'all 0.15s', whiteSpace: 'nowrap' as const },
 }
+
+const LENGTH_OPTIONS = [
+  { value: 'very-very-short', label: '🔥 Tiny' },
+  { value: 'very-short', label: '⚡ V.Short' },
+  { value: 'short', label: '📝 Short' },
+  { value: 'long', label: '📖 Long' },
+]
 
 /* ─── MAIN COMPONENT ─────────────────────────────────────────────────── */
 export default function Page() {
@@ -98,23 +97,23 @@ export default function Page() {
   const [replies, setReplies] = useState<Record<string, string>>({})
   const [generating, setGenerating] = useState<Record<string, boolean>>({})
   const [tones, setTones] = useState<Record<string, string>>({})
+  const [lengths, setLengths] = useState<Record<string, string>>({})
   const [customCtx, setCustomCtx] = useState<Record<string, string>>({})
   const [showCtx, setShowCtx] = useState<Record<string, boolean>>({})
   const [openReplies, setOpenReplies] = useState<Record<string, boolean>>({})
-  // inspect tab
   const [inspectUrl, setInspectUrl] = useState('')
   const [inspecting, setInspecting] = useState(false)
   const [inspectResult, setInspectResult] = useState<InspectResult | null>(null)
+  const [productInfo, setProductInfo] = useState<ProductInfo>({ name: '', url: '', description: '', features: '' })
+  const [productSaved, setProductSaved] = useState(false)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  /* ── TOAST ── */
   function showToast(msg: string, type = '') {
     setToast({ msg, type })
     if (toastTimer.current) clearTimeout(toastTimer.current)
     toastTimer.current = setTimeout(() => setToast(null), 3000)
   }
 
-  /* ── KEYWORDS ── */
   function addKeyword() {
     if (!kwInput.trim()) return
     const news = kwInput.split(',').map(k => k.trim()).filter(k => k && !keywords.includes(k))
@@ -122,7 +121,6 @@ export default function Page() {
     setKwInput('')
   }
 
-  /* ── SEARCH ── */
   async function runSearch() {
     if (!keywords.length) { showToast('Add at least one keyword', 'error'); return }
     setSearching(true)
@@ -141,46 +139,54 @@ export default function Page() {
     } catch (e) {
       setStatus({ state: 'idle', text: 'Search failed' })
       showToast(e instanceof Error ? e.message : 'Search failed', 'error')
-    } finally {
-      setSearching(false)
-    }
+    } finally { setSearching(false) }
   }
 
-  /* ── GENERATE REPLY ── */
-  async function generateReply(post: RedditPost) {
-    setGenerating(g => ({ ...g, [post.id]: true }))
+  async function generateReply(postId: string, post: { title: string; selftext: string; subreddit: string }) {
+    setGenerating(g => ({ ...g, [postId]: true }))
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          post: { title: post.title, selftext: post.selftext, subreddit: post.subreddit },
-          tone: tones[post.id] || 'helpful',
+          post,
+          tone: tones[postId] || 'helpful',
+          length: lengths[postId] || 'short',
           productContext,
-          customContext: customCtx[post.id] || '',
+          customContext: customCtx[postId] || '',
+          productInfo: productSaved ? productInfo : undefined,
         }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      setReplies(r => ({ ...r, [post.id]: data.reply }))
+      setReplies(r => ({ ...r, [postId]: data.reply }))
       showToast('Reply generated', 'success')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Generation failed', 'error')
-    } finally {
-      setGenerating(g => ({ ...g, [post.id]: false }))
-    }
+    } finally { setGenerating(g => ({ ...g, [postId]: false })) }
   }
 
-  /* ── INSPECT ── */
+  function inspectPost(post: RedditPost) {
+    const url = `https://reddit.com${post.permalink}`
+    setInspectUrl(url)
+    setInspectResult(null)
+    setTab('inspect')
+    setTimeout(() => runInspectWithUrl(url), 100)
+  }
+
   async function runInspect() {
     if (!inspectUrl.trim()) { showToast('Paste a Reddit URL', 'error'); return }
+    await runInspectWithUrl(inspectUrl.trim())
+  }
+
+  async function runInspectWithUrl(url: string) {
     setInspecting(true)
     setInspectResult(null)
     try {
       const res = await fetch('/api/inspect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: inspectUrl.trim() }),
+        body: JSON.stringify({ url }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
@@ -188,26 +194,26 @@ export default function Page() {
       showToast('Thread analyzed', 'success')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Inspection failed', 'error')
-    } finally {
-      setInspecting(false)
-    }
+    } finally { setInspecting(false) }
   }
 
-  /* ── COPY ── */
   function copyText(text: string) {
     navigator.clipboard.writeText(text)
     showToast('Copied!', 'success')
   }
 
-  /* ── STATUS DOT ── */
   const dotColor = status.state === 'active' ? '#16a34a' : status.state === 'loading' ? '#ff4500' : '#ccc'
 
-  /* ── RENDER ── */
+  const tabLabels: { key: Tab; label: string }[] = [
+    { key: 'search', label: '🔍 Search' },
+    { key: 'inspect', label: '🔗 Inspect' },
+    { key: 'product', label: '📦 Product' },
+  ]
+
   return (
     <>
       <div style={S.gridBg} />
       <div style={S.app}>
-        {/* HEADER */}
         <header style={S.header}>
           <div style={S.logo}>
             <div style={S.logoIcon}>d</div>
@@ -217,10 +223,16 @@ export default function Page() {
               <span style={{ color: '#999' }}> // reddit</span>
             </div>
           </div>
-          <div style={S.headerTag}>Reply Engine</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {productSaved && (
+              <span style={{ fontSize: 12, color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)', borderRadius: 6, padding: '4px 10px', fontFamily: 'IBM Plex Mono, monospace' }}>
+                📦 {productInfo.name}
+              </span>
+            )}
+            <div style={S.headerTag}>Reply Engine</div>
+          </div>
         </header>
 
-        {/* CONFIG */}
         <div style={S.panel}>
           <div style={S.panelTitle}>⚙ Config</div>
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end' }}>
@@ -229,20 +241,68 @@ export default function Page() {
               <div style={{ ...S.input, background: '#f0f0f0', color: '#888', cursor: 'default' }}>Gemini 3.1 Flash Lite</div>
             </div>
             <div style={{ flex: 2 }}>
-              <label style={S.label}>Your Product Context</label>
-              <input style={S.input} value={productContext} onChange={e => setProductContext(e.target.value)} placeholder="e.g. dight.pro — AI lead scoring for freelancers" />
+              <label style={S.label}>Your Identity / Context</label>
+              <input style={S.input} value={productContext} onChange={e => setProductContext(e.target.value)} placeholder="e.g. A founder building AI tools for freelancers" />
             </div>
           </div>
         </div>
 
-        {/* TABS */}
         <div style={S.tabs}>
-          {(['search', 'inspect'] as Tab[]).map(t => (
-            <button key={t} style={{ ...S.tabBtn, background: tab === t ? '#ff4500' : 'transparent', color: tab === t ? '#fff' : '#999' }} onClick={() => setTab(t)}>
-              {t === 'search' ? '🔍 Search' : '🔗 Inspect URL'}
+          {tabLabels.map(t => (
+            <button key={t.key} style={{ ...S.tabBtn, background: tab === t.key ? '#ff4500' : 'transparent', color: tab === t.key ? '#fff' : '#999' }} onClick={() => setTab(t.key)}>
+              {t.label}
             </button>
           ))}
         </div>
+
+        {/* ── PRODUCT TAB ── */}
+        {tab === 'product' && (
+          <div style={S.panel}>
+            <div style={S.panelTitle}>📦 Your Product Details</div>
+            <p style={{ fontSize: 14, color: '#888', marginBottom: 20, lineHeight: 1.6 }}>
+              Fill in your product info. When saved, AI will casually pitch your product in replies where it{"'"}s genuinely relevant — like a real user recommending a tool they love.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={S.label}>Product Name</label>
+                <input style={S.input} value={productInfo.name} onChange={e => setProductInfo(p => ({ ...p, name: e.target.value }))} placeholder="e.g. dight.pro" />
+              </div>
+              <div>
+                <label style={S.label}>Product URL</label>
+                <input style={S.input} value={productInfo.url} onChange={e => setProductInfo(p => ({ ...p, url: e.target.value }))} placeholder="e.g. https://dight.pro" />
+              </div>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={S.label}>What does it do? (1-2 sentences)</label>
+              <textarea
+                style={{ ...S.input, minHeight: 80, resize: 'vertical' as const, lineHeight: 1.6 }}
+                value={productInfo.description}
+                onChange={e => setProductInfo(p => ({ ...p, description: e.target.value }))}
+                placeholder="e.g. AI-powered lead scoring tool that helps freelancers identify their best potential clients from social signals."
+              />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={S.label}>Key Features (one per line or comma-separated)</label>
+              <textarea
+                style={{ ...S.input, minHeight: 100, resize: 'vertical' as const, lineHeight: 1.6 }}
+                value={productInfo.features}
+                onChange={e => setProductInfo(p => ({ ...p, features: e.target.value }))}
+                placeholder={"e.g.\nAuto-scores leads from Reddit, Twitter, LinkedIn\nAI-generated outreach drafts\nIntegrates with your CRM\nFree tier available"}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <button style={{ ...S.btn, opacity: productInfo.name.trim() ? 1 : 0.5 }} disabled={!productInfo.name.trim()} onClick={() => { setProductSaved(true); showToast(`Product "${productInfo.name}" saved — AI will use it in replies`, 'success') }}>
+                💾 Save Product
+              </button>
+              {productSaved && (
+                <button style={S.btnGhost} onClick={() => { setProductSaved(false); showToast('Product removed from replies', '') }}>
+                  🗑 Clear
+                </button>
+              )}
+              {productSaved && <span style={{ fontSize: 13, color: '#16a34a' }}>✓ Active — AI will pitch casually when relevant</span>}
+            </div>
+          </div>
+        )}
 
         {/* ── SEARCH TAB ── */}
         {tab === 'search' && (
@@ -251,17 +311,10 @@ export default function Page() {
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' as const }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <label style={S.label}>Keywords</label>
-                  <input
-                    style={S.input}
-                    value={kwInput}
-                    onChange={e => setKwInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && addKeyword()}
-                    placeholder="lead generation, find clients, outreach..."
-                  />
+                  <input style={S.input} value={kwInput} onChange={e => setKwInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addKeyword()} placeholder="lead generation, find clients, outreach..." />
                 </div>
                 <button style={{ ...S.btn, background: 'transparent', border: '1px solid #e0e0e0', color: '#888' }} onClick={addKeyword}>+ Add</button>
               </div>
-
               {keywords.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginTop: 12 }}>
                   {keywords.map(k => (
@@ -272,9 +325,7 @@ export default function Page() {
                   ))}
                 </div>
               )}
-
               <div style={{ ...S.divider, marginTop: 18 }} />
-
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 12, alignItems: 'flex-end' }}>
                 <div>
                   <label style={S.label}>Subreddits (comma-sep, blank = all)</label>
@@ -297,38 +348,30 @@ export default function Page() {
                 </button>
               </div>
             </div>
-
-            {/* STATUS */}
             <div style={S.statusBar}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, flexShrink: 0, boxShadow: status.state !== 'idle' ? `0 0 8px ${dotColor}` : 'none' }} />
               <span>{status.text}</span>
             </div>
-
-            {/* RESULTS */}
             {posts.length === 0 && !searching && (
               <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999' }}>
                 <div style={{ fontSize: 48, marginBottom: 14 }}>🔍</div>
                 <p style={{ fontSize: 16, lineHeight: 1.7 }}>Search Reddit by keyword to find posts worth replying to.</p>
               </div>
             )}
-
             {posts.map(post => (
               <PostCard
-                key={post.id}
-                post={post}
-                reply={replies[post.id] || ''}
-                isGenerating={!!generating[post.id]}
-                tone={tones[post.id] || 'helpful'}
-                ctx={customCtx[post.id] || ''}
-                showCtxPanel={!!showCtx[post.id]}
-                replyOpen={!!openReplies[post.id]}
+                key={post.id} post={post} reply={replies[post.id] || ''} isGenerating={!!generating[post.id]}
+                tone={tones[post.id] || 'helpful'} length={lengths[post.id] || 'short'}
+                ctx={customCtx[post.id] || ''} showCtxPanel={!!showCtx[post.id]} replyOpen={!!openReplies[post.id]}
                 onToneChange={t => setTones(x => ({ ...x, [post.id]: t }))}
+                onLengthChange={l => setLengths(x => ({ ...x, [post.id]: l }))}
                 onCtxChange={t => setCustomCtx(x => ({ ...x, [post.id]: t }))}
                 onToggleCtx={() => setShowCtx(x => ({ ...x, [post.id]: !x[post.id] }))}
                 onToggleReply={() => setOpenReplies(x => ({ ...x, [post.id]: !x[post.id] }))}
-                onGenerate={() => generateReply(post)}
+                onGenerate={() => generateReply(post.id, { title: post.title, selftext: post.selftext, subreddit: post.subreddit })}
                 onReplyChange={t => setReplies(x => ({ ...x, [post.id]: t }))}
                 onCopy={() => copyText(replies[post.id] || '')}
+                onInspect={() => inspectPost(post)}
               />
             ))}
           </>
@@ -347,10 +390,8 @@ export default function Page() {
               </div>
               <p style={{ fontSize: 13, color: '#999', marginTop: 10 }}>AI fetches the thread, reads top comments, and surfaces reply opportunities.</p>
             </div>
-
             {inspectResult && (
               <>
-                {/* Post summary */}
                 <div style={S.card}>
                   <div style={S.cardHeader}>
                     <div style={{ flex: 1 }}>
@@ -368,14 +409,10 @@ export default function Page() {
                     </div>
                   )}
                 </div>
-
-                {/* AI Analysis */}
                 <div style={S.panel}>
                   <div style={S.panelTitle}>✨ AI Analysis</div>
                   <div style={S.analysisBox}>{inspectResult.analysis}</div>
                 </div>
-
-                {/* Top comments */}
                 {inspectResult.comments.length > 0 && (
                   <div style={S.panel}>
                     <div style={S.panelTitle}>💬 Top Comments</div>
@@ -387,44 +424,28 @@ export default function Page() {
                     ))}
                   </div>
                 )}
-
-                {/* Generate reply from inspect */}
                 <div style={S.panel}>
                   <div style={S.panelTitle}>✍ Write Your Reply</div>
-                  <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                    <select style={{ ...S.input, flex: 1 }} value={tones['inspect'] || 'helpful'} onChange={e => setTones(x => ({ ...x, inspect: e.target.value }))}>
+                  <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' as const, alignItems: 'center' }}>
+                    <select style={{ ...S.input, flex: 1, minWidth: 160 }} value={tones['inspect'] || 'helpful'} onChange={e => setTones(x => ({ ...x, inspect: e.target.value }))}>
                       <option value="helpful">Helpful / Educational</option>
                       <option value="casual">Casual / Conversational</option>
                       <option value="expert">Expert / Authoritative</option>
                       <option value="curious">Curious / Questioning</option>
                       <option value="witty">Witty / Light</option>
                     </select>
-                    <button style={{ ...S.btn, opacity: generating['inspect'] ? 0.5 : 1 }}
-                      disabled={generating['inspect']}
-                      onClick={async () => {
-                        setGenerating(g => ({ ...g, inspect: true }))
-                        try {
-                          const res = await fetch('/api/generate', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ post: inspectResult.post, tone: tones['inspect'] || 'helpful', productContext, customContext: customCtx['inspect'] || '' }),
-                          })
-                          const data = await res.json()
-                          if (data.error) throw new Error(data.error)
-                          setReplies(r => ({ ...r, inspect: data.reply }))
-                          showToast('Reply generated', 'success')
-                        } catch (e) { showToast(e instanceof Error ? e.message : 'Failed', 'error') }
-                        finally { setGenerating(g => ({ ...g, inspect: false })) }
-                      }}>
+                    <div style={S.lengthBar}>
+                      {LENGTH_OPTIONS.map(lo => (
+                        <button key={lo.value} style={{ ...S.lengthPill, background: (lengths['inspect'] || 'short') === lo.value ? '#ff4500' : 'transparent', color: (lengths['inspect'] || 'short') === lo.value ? '#fff' : '#888' }} onClick={() => setLengths(x => ({ ...x, inspect: lo.value }))}>
+                          {lo.label}
+                        </button>
+                      ))}
+                    </div>
+                    <button style={{ ...S.btn, opacity: generating['inspect'] ? 0.5 : 1 }} disabled={generating['inspect']} onClick={() => generateReply('inspect', inspectResult.post)}>
                       {generating['inspect'] ? '...' : '✨ Generate'}
                     </button>
                   </div>
-                  <textarea
-                    style={{ ...S.input, minHeight: 120, resize: 'vertical', lineHeight: 1.6 }}
-                    value={replies['inspect'] || ''}
-                    onChange={e => setReplies(r => ({ ...r, inspect: e.target.value }))}
-                    placeholder="Generated reply appears here..."
-                  />
+                  <textarea style={{ ...S.input, minHeight: 120, resize: 'vertical', lineHeight: 1.6 }} value={replies['inspect'] || ''} onChange={e => setReplies(r => ({ ...r, inspect: e.target.value }))} placeholder="Generated reply appears here..." />
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
                     <button style={S.btnGhost} onClick={() => copyText(replies['inspect'] || '')}>📋 Copy</button>
                     <a href={`https://reddit.com${inspectResult.post.permalink}`} target="_blank" rel="noopener noreferrer" style={{ ...S.btn, textDecoration: 'none', display: 'inline-block' }}>Post on Reddit ↗</a>
@@ -436,15 +457,13 @@ export default function Page() {
         )}
       </div>
 
-      {/* TOAST */}
       {toast && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, background: '#ffffff',
           border: `1px solid ${toast.type === 'success' ? '#16a34a' : toast.type === 'error' ? '#ff4500' : '#e0e0e0'}`,
           borderRadius: 10, padding: '14px 22px', fontSize: 15,
           color: toast.type === 'success' ? '#16a34a' : toast.type === 'error' ? '#e03d00' : '#1a1a1a',
-          zIndex: 9999, fontFamily: 'IBM Plex Mono, monospace',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+          zIndex: 9999, fontFamily: 'IBM Plex Mono, monospace', boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
         }}>
           {toast.msg}
         </div>
@@ -455,24 +474,15 @@ export default function Page() {
 
 /* ─── POST CARD ─────────────────────────────────────────────────────── */
 function PostCard({
-  post, reply, isGenerating, tone, ctx, showCtxPanel, replyOpen,
-  onToneChange, onCtxChange, onToggleCtx, onToggleReply,
-  onGenerate, onReplyChange, onCopy,
+  post, reply, isGenerating, tone, length, ctx, showCtxPanel, replyOpen,
+  onToneChange, onLengthChange, onCtxChange, onToggleCtx, onToggleReply,
+  onGenerate, onReplyChange, onCopy, onInspect,
 }: {
-  post: RedditPost
-  reply: string
-  isGenerating: boolean
-  tone: string
-  ctx: string
-  showCtxPanel: boolean
-  replyOpen: boolean
-  onToneChange: (t: string) => void
-  onCtxChange: (t: string) => void
-  onToggleCtx: () => void
-  onToggleReply: () => void
-  onGenerate: () => void
-  onReplyChange: (t: string) => void
-  onCopy: () => void
+  post: RedditPost; reply: string; isGenerating: boolean; tone: string; length: string
+  ctx: string; showCtxPanel: boolean; replyOpen: boolean
+  onToneChange: (t: string) => void; onLengthChange: (l: string) => void
+  onCtxChange: (t: string) => void; onToggleCtx: () => void; onToggleReply: () => void
+  onGenerate: () => void; onReplyChange: (t: string) => void; onCopy: () => void; onInspect: () => void
 }) {
   const S2: Record<string, React.CSSProperties> = {
     card: { background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: 14, marginBottom: 16, overflow: 'hidden' },
@@ -499,6 +509,7 @@ function PostCard({
           )}
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button onClick={onInspect} title="Inspect this thread" style={{ background: 'transparent', border: '1px solid #e0e0e0', color: '#888', borderRadius: 8, fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '8px 14px', cursor: 'pointer' }}>🔍</button>
           <a href={redditUrl} target="_blank" rel="noopener noreferrer" style={{ background: 'transparent', border: '1px solid #e0e0e0', color: '#888', borderRadius: 8, fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '8px 14px', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>↗</a>
           <button onClick={onToggleReply} style={{ background: replyOpen ? '#ff4500' : 'transparent', border: '1px solid ' + (replyOpen ? '#ff4500' : '#e0e0e0'), color: replyOpen ? '#fff' : '#888', borderRadius: 8, fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '8px 16px', cursor: 'pointer' }}>
             {replyOpen ? 'Close' : 'Reply'}
@@ -508,29 +519,32 @@ function PostCard({
 
       {replyOpen && (
         <div style={{ padding: '18px 22px', borderTop: '1px solid #e0e0e0' }}>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-            <select value={tone} onChange={e => onToneChange(e.target.value)} style={{ flex: 1, background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '10px 14px', outline: 'none' }}>
+          <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' as const, alignItems: 'center' }}>
+            <select value={tone} onChange={e => onToneChange(e.target.value)} style={{ flex: 1, minWidth: 160, background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '10px 14px', outline: 'none' }}>
               <option value="helpful">Helpful / Educational</option>
               <option value="casual">Casual / Conversational</option>
               <option value="expert">Expert / Authoritative</option>
               <option value="curious">Curious / Questioning</option>
               <option value="witty">Witty / Light</option>
             </select>
+            <div style={S.lengthBar}>
+              {LENGTH_OPTIONS.map(lo => (
+                <button key={lo.value} style={{ ...S.lengthPill, background: length === lo.value ? '#ff4500' : 'transparent', color: length === lo.value ? '#fff' : '#888' }} onClick={() => onLengthChange(lo.value)}>
+                  {lo.label}
+                </button>
+              ))}
+            </div>
             <button onClick={onGenerate} disabled={isGenerating} style={{ background: '#ff4500', border: 'none', borderRadius: 10, color: '#fff', fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, fontWeight: 600, padding: '10px 20px', cursor: isGenerating ? 'not-allowed' : 'pointer', opacity: isGenerating ? 0.5 : 1 }}>
               {isGenerating ? 'Generating...' : '✨ Generate'}
             </button>
           </div>
-
           <button onClick={onToggleCtx} style={{ background: 'none', border: 'none', color: '#999', fontFamily: 'IBM Plex Mono, monospace', fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: showCtxPanel ? 10 : 14, textDecoration: 'underline' }}>
             {showCtxPanel ? '− hide' : '+ custom context'}
           </button>
-
           {showCtxPanel && (
-            <textarea value={ctx} onChange={e => onCtxChange(e.target.value)} placeholder="Extra context for AI (e.g. mention dight.pro if relevant)..." style={{ width: '100%', background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '12px 14px', outline: 'none', minHeight: 70, resize: 'vertical' as const, marginBottom: 12 }} />
+            <textarea value={ctx} onChange={e => onCtxChange(e.target.value)} placeholder="Extra context for AI..." style={{ width: '100%', background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '12px 14px', outline: 'none', minHeight: 70, resize: 'vertical' as const, marginBottom: 12 }} />
           )}
-
           <textarea value={reply} onChange={e => onReplyChange(e.target.value)} placeholder="Generated reply appears here..." style={{ width: '100%', background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: 15, padding: '12px 14px', outline: 'none', minHeight: 110, resize: 'vertical' as const, lineHeight: 1.7 }} />
-
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
             <span style={{ fontSize: 13, color: '#999' }}>{reply.length} chars</span>
             <div style={{ display: 'flex', gap: 8 }}>

@@ -1,6 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+const UA = 'web:reddit-reply-tool:v1.0 (by /u/dight_pro)'
+
+// ── Reddit OAuth token cache ──
+let cachedToken: { token: string; expiresAt: number } | null = null
+
+async function getRedditToken(): Promise<string | null> {
+  // Return cached token if still valid (with 60s buffer)
+  if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) {
+    return cachedToken.token
+  }
+
+  const clientId = process.env.REDDIT_CLIENT_ID
+  const clientSecret = process.env.REDDIT_CLIENT_SECRET
+  if (!clientId || !clientSecret) return null
+
+  try {
+    const res = await fetch('https://www.reddit.com/api/v1/access_token', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': UA,
+      },
+      body: 'grant_type=client_credentials',
+    })
+
+    if (!res.ok) {
+      console.error('Reddit OAuth failed:', res.status, await res.text())
+      return null
+    }
+
+    const data = await res.json()
+    cachedToken = {
+      token: data.access_token,
+      expiresAt: Date.now() + (data.expires_in * 1000),
+    }
+    return cachedToken.token
+  } catch (err) {
+    console.error('Reddit OAuth error:', err)
+    return null
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,20 +56,46 @@ export async function POST(req: NextRequest) {
     const posts: Record<string, unknown>[] = []
     const seen = new Set<string>()
 
+    // Try OAuth first, fall back to public API
+    const token = await getRedditToken()
+    const useOAuth = !!token
+
     for (const sub of subs) {
-      const url = `https://www.reddit.com/r/${sub}/search.json?q=${encodeURIComponent(query)}&sort=${sort || 'new'}&limit=${limit || 25}&restrict_sr=${sub !== 'all' ? '1' : '0'}&t=week&raw_json=1`
+      const searchParams = new URLSearchParams({
+        q: query,
+        sort: sort || 'new',
+        limit: String(limit || 25),
+        restrict_sr: sub !== 'all' ? '1' : '0',
+        t: 'week',
+        raw_json: '1',
+        type: 'link',
+      })
+
+      const url = useOAuth
+        ? `https://oauth.reddit.com/r/${sub}/search?${searchParams}`
+        : `https://www.reddit.com/r/${sub}/search.json?${searchParams}`
+
       try {
-        const res = await fetch(url, {
-          headers: {
-            'User-Agent': UA,
-            'Accept': 'application/json',
-            'Accept-Language': 'en-US,en;q=0.9',
-          },
-        })
+        const headers: Record<string, string> = {
+          'User-Agent': UA,
+          'Accept': 'application/json',
+        }
+        if (useOAuth) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+
+        const res = await fetch(url, { headers })
 
         if (res.status === 429) {
           console.warn(`Reddit rate-limited on r/${sub}, waiting 2s...`)
           await new Promise(r => setTimeout(r, 2000))
+          continue
+        }
+
+        if (res.status === 401 && useOAuth) {
+          // Token expired mid-request, clear cache
+          cachedToken = null
+          console.warn('Reddit OAuth token expired, skipping')
           continue
         }
 

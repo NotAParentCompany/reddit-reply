@@ -1,6 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+const UA = 'web:reddit-reply-tool:v1.0 (by /u/dight_pro)'
+
+// ── Reddit OAuth token cache ──
+let cachedToken: { token: string; expiresAt: number } | null = null
+
+async function getRedditToken(): Promise<string | null> {
+  if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) {
+    return cachedToken.token
+  }
+  const clientId = process.env.REDDIT_CLIENT_ID
+  const clientSecret = process.env.REDDIT_CLIENT_SECRET
+  if (!clientId || !clientSecret) return null
+  try {
+    const res = await fetch('https://www.reddit.com/api/v1/access_token', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': UA,
+      },
+      body: 'grant_type=client_credentials',
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    cachedToken = { token: data.access_token, expiresAt: Date.now() + (data.expires_in * 1000) }
+    return cachedToken.token
+  } catch { return null }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,15 +35,28 @@ export async function POST(req: NextRequest) {
 
     if (!url) return NextResponse.json({ error: 'No URL provided' }, { status: 400 })
 
-    // Fetch Reddit JSON for the thread
-    const jsonUrl = url.replace(/\/$/, '') + '.json?limit=20&raw_json=1'
-    const res = await fetch(jsonUrl, {
-      headers: {
-        'User-Agent': UA,
-        'Accept': 'application/json',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-    })
+    // Extract the path from the Reddit URL
+    const match = url.match(/reddit\.com(\/r\/[^?#]+)/)
+    const path = match ? match[1].replace(/\/$/, '') : null
+
+    const token = await getRedditToken()
+
+    let fetchUrl: string
+    const headers: Record<string, string> = {
+      'User-Agent': UA,
+      'Accept': 'application/json',
+    }
+
+    if (token && path) {
+      // Use OAuth API
+      fetchUrl = `https://oauth.reddit.com${path}.json?limit=20&raw_json=1`
+      headers['Authorization'] = `Bearer ${token}`
+    } else {
+      // Fallback to public API
+      fetchUrl = url.replace(/\/$/, '') + '.json?limit=20&raw_json=1'
+    }
+
+    const res = await fetch(fetchUrl, { headers })
 
     if (!res.ok) throw new Error(`Could not fetch Reddit thread (${res.status})`)
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+
 export async function POST(req: NextRequest) {
   try {
     const { url } = await req.json()
@@ -7,9 +9,13 @@ export async function POST(req: NextRequest) {
     if (!url) return NextResponse.json({ error: 'No URL provided' }, { status: 400 })
 
     // Fetch Reddit JSON for the thread
-    const jsonUrl = url.replace(/\/$/, '') + '.json?limit=20'
+    const jsonUrl = url.replace(/\/$/, '') + '.json?limit=20&raw_json=1'
     const res = await fetch(jsonUrl, {
-      headers: { 'User-Agent': 'reddit-reply-tool/1.0' },
+      headers: {
+        'User-Agent': UA,
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
     })
 
     if (!res.ok) throw new Error(`Could not fetch Reddit thread (${res.status})`)

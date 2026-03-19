@@ -157,7 +157,8 @@ export default function Page() {
   const [tab, setTab] = useState<Tab>('search')
   const [keywords, setKeywords] = useState<string[]>([])
   const [kwInput, setKwInput] = useState('')
-  const [subreddits, setSubreddits] = useState('')
+  const [subreddits, setSubreddits] = useState<string[]>([])
+  const [subInput, setSubInput] = useState('')
   const [sort, setSort] = useState('new')
   const [limit, setLimit] = useState('25')
   const [posts, setPosts] = useState<RedditPost[]>([])
@@ -185,7 +186,7 @@ export default function Page() {
   // ── Load persisted state on mount ──
   useEffect(() => {
     setKeywords(loadLocal<string[]>('rr_keywords', []))
-    setSubreddits(loadLocal<string>('rr_subreddits', ''))
+    setSubreddits(loadLocal<string[]>('rr_subreddits', []))
     setSystemPrompt(loadLocal<string>('rr_system_prompt', DEFAULT_PROMPT))
     setKeywordPacks(loadLocal<KeywordPack[]>('rr_keyword_packs', DEFAULT_KEYWORD_PACKS))
     const savedProduct = loadLocal<ProductInfo | null>('rr_product_info', null)
@@ -215,12 +216,19 @@ export default function Page() {
     setKwInput('')
   }
 
+  function addSubreddit() {
+    if (!subInput.trim()) return
+    const news = subInput.split(',').map(s => s.trim().replace(/^r\//, '')).filter(s => s && !subreddits.includes(s))
+    setSubreddits([...subreddits, ...news])
+    setSubInput('')
+  }
+
   async function runSearch() {
     if (!keywords.length) { showToast('Add at least one keyword', 'error'); return }
     setSearching(true)
     setStatus({ state: 'loading', text: 'Searching Reddit...' })
     try {
-      const subs = subreddits.split(',').map(s => s.trim()).filter(Boolean)
+      const subs = subreddits.filter(Boolean)
       const res = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -425,11 +433,28 @@ export default function Page() {
                 </div>
               )}
               <div style={{ ...S.divider, marginTop: 18 }} />
-              <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : '2fr 1fr 1fr auto', gap: 12, alignItems: 'flex-end' }}>
-                <div>
-                  <label style={S.label}>Subreddits (comma-sep, blank = all)</label>
-                  <input style={S.input} value={subreddits} onChange={e => setSubreddits(e.target.value)} placeholder="SaaS, freelance, entrepreneur" />
+              {/* ── Subreddits ── */}
+              <div style={{ marginTop: 16 }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' as const }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <label style={S.label}>Subreddits (blank = r/all)</label>
+                    <input style={S.input} value={subInput} onChange={e => setSubInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addSubreddit()} placeholder="SaaS, freelance, entrepreneur..." />
+                  </div>
+                  <button style={{ ...S.btn, background: 'transparent', border: '1px solid #e0e0e0', color: '#888' }} onClick={addSubreddit}>+ Add</button>
                 </div>
+                {subreddits.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginTop: 12 }}>
+                    {subreddits.map(s => (
+                      <span key={s} style={{ ...S.tag, background: 'rgba(0,122,255,0.06)', border: '1px solid rgba(0,122,255,0.2)', color: '#0066cc' }}>
+                        r/{s}
+                        <button onClick={() => setSubreddits(subreddits.filter(x => x !== s))} style={{ background: 'none', border: 'none', color: '#0066cc', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div style={{ ...S.divider, marginTop: 18 }} />
+              <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr 1fr' : '1fr 1fr auto', gap: 12, alignItems: 'flex-end', marginTop: 16 }}>
                 <div>
                   <label style={S.label}>Sort</label>
                   <select style={S.input} value={sort} onChange={e => setSort(e.target.value)}>
@@ -442,8 +467,8 @@ export default function Page() {
                     {['10', '20', '25'].map(l => <option key={l}>{l}</option>)}
                   </select>
                 </div>
-                <button style={{ ...S.btn, opacity: searching ? 0.5 : 1 }} onClick={runSearch} disabled={searching}>
-                  {searching ? '...' : 'Search'}
+                <button style={{ ...S.btn, opacity: searching ? 0.5 : 1, gridColumn: mob ? '1 / -1' : undefined }} onClick={runSearch} disabled={searching}>
+                  {searching ? '...' : '🔍 Search'}
                 </button>
               </div>
             </div>
@@ -515,13 +540,53 @@ export default function Page() {
                 </div>
                 {inspectResult.comments.length > 0 && (
                   <div style={S.panel}>
-                    <div style={S.panelTitle}>💬 Top Comments</div>
-                    {inspectResult.comments.map((c, i) => (
-                      <div key={i} style={{ padding: mob ? '10px 0' : '14px 0', borderBottom: i < inspectResult.comments.length - 1 ? '1px solid #e0e0e0' : 'none' }}>
-                        <div style={{ fontSize: mob ? 11 : 13, color: '#999', marginBottom: 6 }}>u/{c.author} · ▲ {c.score}</div>
-                        <div style={{ fontSize: mob ? 13 : 15, color: '#444', lineHeight: 1.6 }}>{c.body.slice(0, mob ? 250 : 400)}{c.body.length > (mob ? 250 : 400) ? '...' : ''}</div>
-                      </div>
-                    ))}
+                    <div style={S.panelTitle}>💬 Top Comments — Reply to Each</div>
+                    {inspectResult.comments.map((c, i) => {
+                      const cId = `comment_${i}`
+                      return (
+                        <div key={i} style={{ padding: mob ? '12px 0' : '16px 0', borderBottom: i < inspectResult.comments.length - 1 ? '1px solid #e0e0e0' : 'none' }}>
+                          <div style={{ fontSize: mob ? 11 : 13, color: '#999', marginBottom: 6 }}>u/{c.author} · ▲ {c.score}</div>
+                          <div style={{ fontSize: mob ? 13 : 15, color: '#444', lineHeight: 1.6, marginBottom: 10 }}>{c.body.slice(0, mob ? 300 : 500)}{c.body.length > (mob ? 300 : 500) ? '...' : ''}</div>
+                          {/* Per-comment reply controls */}
+                          <div style={{ display: 'flex', gap: mob ? 6 : 10, flexWrap: 'wrap' as const, alignItems: 'center', marginBottom: replies[cId] ? 10 : 0 }}>
+                            <select style={{ ...S.input, width: 'auto', flex: 0, minWidth: mob ? 100 : 130, fontSize: mob ? 12 : 13, padding: mob ? '6px 8px' : '8px 10px' }} value={tones[cId] || 'helpful'} onChange={e => setTones(x => ({ ...x, [cId]: e.target.value }))}>
+                              <option value="helpful">Helpful</option>
+                              <option value="casual">Casual</option>
+                              <option value="expert">Expert</option>
+                              <option value="curious">Curious</option>
+                              <option value="witty">Witty</option>
+                            </select>
+                            <div style={S.lengthBar}>
+                              {LENGTH_OPTIONS.map(lo => (
+                                <button key={lo.value} style={{ ...S.lengthPill, background: (lengths[cId] || 'short') === lo.value ? '#ff4500' : 'transparent', color: (lengths[cId] || 'short') === lo.value ? '#fff' : '#888' }} onClick={() => setLengths(x => ({ ...x, [cId]: lo.value }))}>
+                                  {mob ? lo.label.split(' ')[0] : lo.label}
+                                </button>
+                              ))}
+                            </div>
+                            <button
+                              style={{ ...S.btn, ...S.btnSm, opacity: generating[cId] ? 0.5 : 1 }}
+                              disabled={generating[cId]}
+                              onClick={() => generateReply(cId, { title: `Reply to u/${c.author}'s comment: "${c.body.slice(0, 200)}"`, selftext: `Original post: ${inspectResult.post.title}\n\nComment by u/${c.author}:\n${c.body}`, subreddit: inspectResult.post.subreddit })}
+                            >
+                              {generating[cId] ? '...' : '✨ Reply'}
+                            </button>
+                          </div>
+                          {replies[cId] && (
+                            <div style={{ marginTop: 8 }}>
+                              <textarea
+                                style={{ ...S.input, minHeight: mob ? 70 : 90, resize: 'vertical' as const, lineHeight: 1.6, fontSize: mob ? 13 : 14 }}
+                                value={replies[cId]}
+                                onChange={e => setReplies(r => ({ ...r, [cId]: e.target.value }))}
+                              />
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 6 }}>
+                                <button style={{ ...S.btnGhost, ...S.btnSm }} onClick={() => copyText(replies[cId])}>📋 Copy</button>
+                                <a href={`https://reddit.com${inspectResult.post.permalink}`} target="_blank" rel="noopener noreferrer" style={{ ...S.btn, ...S.btnSm, textDecoration: 'none', display: 'inline-block' }}>Post ↗</a>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
                 <div style={S.panel}>

@@ -26,3 +26,24 @@ html, body {
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+
+/* ─── Mobile Responsive ────────────────────────────────────────────── */
+
+/* Touch targets */
+@media (max-width: 768px) {
+  html { font-size: 15px; -webkit-text-size-adjust: 100%; }
+
+  input, select, textarea, button {
+    font-size: 16px !important; /* prevents iOS zoom on focus */
+  }
+
+  /* Utility: hide on mobile */
+  .hide-mobile { display: none !important; }
+}
+
+/* Smooth scrolling on mobile tab bars */
+.mobile-scroll-x {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.mobile-scroll-x::-webkit-scrollbar { display: none; }

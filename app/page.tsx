@@ -92,41 +92,55 @@ function timeAgo(unix: number) {
   return `${Math.floor(sec / 86400)}d ago`
 }
 
-/* ─── STYLES (CSS-in-JS object) ─────────────────────────────────────── */
-const S: Record<string, React.CSSProperties> = {
-  app: { maxWidth: 1100, margin: '0 auto', padding: '0 24px 80px', position: 'relative', zIndex: 1 },
-  gridBg: {
-    position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
-    backgroundImage: 'linear-gradient(rgba(255,69,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,69,0,0.04) 1px,transparent 1px)',
-    backgroundSize: '40px 40px',
-  },
-  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '32px 0 32px', borderBottom: '1px solid #e0e0e0', marginBottom: 32 },
-  logo: { display: 'flex', alignItems: 'center', gap: 12 },
-  logoIcon: { width: 38, height: 38, background: '#ff4500', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 17, color: '#fff' },
-  logoText: { fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 22, letterSpacing: -0.5 },
-  headerTag: { fontSize: 13, color: '#999', letterSpacing: 2, textTransform: 'uppercase' as const },
-  panel: { background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: 14, padding: 28, marginBottom: 22 },
-  panelTitle: { fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 2, textTransform: 'uppercase' as const, color: '#999', marginBottom: 18 },
-  label: { display: 'block', fontSize: 13, color: '#888', letterSpacing: 1.5, textTransform: 'uppercase' as const, marginBottom: 8 },
-  input: { width: '100%', background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: 15, padding: '12px 14px', outline: 'none' },
-  tabs: { display: 'flex', gap: 0, background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: 12, padding: 5, marginBottom: 22, width: 'fit-content' },
-  tabBtn: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, fontWeight: 600, padding: '10px 24px', border: 'none', borderRadius: 9, cursor: 'pointer', letterSpacing: 0.5, transition: 'all 0.15s' },
-  btn: { background: '#ff4500', border: 'none', borderRadius: 10, color: '#fff', fontFamily: 'IBM Plex Mono, monospace', fontSize: 15, fontWeight: 600, padding: '12px 24px', cursor: 'pointer', whiteSpace: 'nowrap' as const, letterSpacing: 0.5, transition: 'background 0.15s' },
-  btnGhost: { background: 'transparent', border: '1px solid #e0e0e0', color: '#888', borderRadius: 10, fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '9px 16px', cursor: 'pointer' },
-  btnSm: { padding: '9px 16px', fontSize: 14 },
-  statusBar: { display: 'flex', alignItems: 'center', gap: 12, padding: '13px 18px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: 10, marginBottom: 22, fontSize: 14, color: '#888' },
-  tag: { display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.25)', borderRadius: 6, padding: '5px 12px', fontSize: 14, color: '#e03d00' },
-  card: { background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: 14, marginBottom: 16, overflow: 'hidden' },
-  cardHeader: { padding: '18px 22px 14px', borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 },
-  subBadge: { fontSize: 13, fontWeight: 600, color: '#ff4500', background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.2)', borderRadius: 6, padding: '3px 10px' },
-  postTitle: { fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 600, lineHeight: 1.4, marginTop: 6, color: '#1a1a1a' },
-  analysisBox: { background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, padding: 18, fontSize: 14, lineHeight: 1.9, color: '#444', whiteSpace: 'pre-wrap' as const },
-  divider: { height: 1, background: '#e0e0e0', margin: '18px 0' },
-  lengthBar: { display: 'flex', gap: 0, background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, padding: 3, overflow: 'hidden' },
-  lengthPill: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, fontWeight: 600, padding: '7px 14px', border: 'none', cursor: 'pointer', borderRadius: 8, transition: 'all 0.15s', whiteSpace: 'nowrap' as const },
-  packBar: { display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 12 },
-  packBtn: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, fontWeight: 600, padding: '6px 14px', border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#888', transition: 'all 0.15s' },
-  packBtnActive: { background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.3)', color: '#e03d00' },
+function useIsMobile(bp = 768) {
+  const [m, setM] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${bp}px)`)
+    setM(mq.matches)
+    const h = (e: MediaQueryListEvent) => setM(e.matches)
+    mq.addEventListener('change', h)
+    return () => mq.removeEventListener('change', h)
+  }, [bp])
+  return m
+}
+
+/* ─── STYLES (responsive) ────────────────────────────────────────────── */
+function getStyles(mob: boolean): Record<string, React.CSSProperties> {
+  return {
+    app: { maxWidth: 1100, margin: '0 auto', padding: mob ? '0 12px 60px' : '0 24px 80px', position: 'relative', zIndex: 1 },
+    gridBg: {
+      position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
+      backgroundImage: 'linear-gradient(rgba(255,69,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,69,0,0.04) 1px,transparent 1px)',
+      backgroundSize: '40px 40px',
+    },
+    header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: mob ? '18px 0 18px' : '32px 0 32px', borderBottom: '1px solid #e0e0e0', marginBottom: mob ? 16 : 32, gap: mob ? 8 : 0 },
+    logo: { display: 'flex', alignItems: 'center', gap: mob ? 8 : 12 },
+    logoIcon: { width: mob ? 30 : 38, height: mob ? 30 : 38, background: '#ff4500', borderRadius: mob ? 8 : 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: mob ? 14 : 17, color: '#fff' },
+    logoText: { fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: mob ? 16 : 22, letterSpacing: -0.5 },
+    headerTag: { fontSize: mob ? 10 : 13, color: '#999', letterSpacing: 2, textTransform: 'uppercase' as const },
+    panel: { background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: mob ? 12 : 14, padding: mob ? 16 : 28, marginBottom: mob ? 14 : 22 },
+    panelTitle: { fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: mob ? 12 : 14, letterSpacing: 2, textTransform: 'uppercase' as const, color: '#999', marginBottom: mob ? 12 : 18 },
+    label: { display: 'block', fontSize: mob ? 11 : 13, color: '#888', letterSpacing: 1.5, textTransform: 'uppercase' as const, marginBottom: mob ? 6 : 8 },
+    input: { width: '100%', background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 14 : 15, padding: mob ? '10px 12px' : '12px 14px', outline: 'none', boxSizing: 'border-box' as const },
+    tabs: { display: 'flex', gap: 0, background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: 12, padding: mob ? 3 : 5, marginBottom: mob ? 14 : 22, width: mob ? '100%' : 'fit-content', overflowX: mob ? 'auto' as const : undefined },
+    tabBtn: { fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 12 : 14, fontWeight: 600, padding: mob ? '8px 12px' : '10px 24px', border: 'none', borderRadius: 9, cursor: 'pointer', letterSpacing: 0.5, transition: 'all 0.15s', whiteSpace: 'nowrap' as const, flex: mob ? 1 : undefined, textAlign: 'center' as const },
+    btn: { background: '#ff4500', border: 'none', borderRadius: 10, color: '#fff', fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 13 : 15, fontWeight: 600, padding: mob ? '10px 16px' : '12px 24px', cursor: 'pointer', whiteSpace: 'nowrap' as const, letterSpacing: 0.5, transition: 'background 0.15s' },
+    btnGhost: { background: 'transparent', border: '1px solid #e0e0e0', color: '#888', borderRadius: 10, fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 12 : 14, padding: mob ? '8px 12px' : '9px 16px', cursor: 'pointer' },
+    btnSm: { padding: mob ? '7px 12px' : '9px 16px', fontSize: mob ? 12 : 14 },
+    statusBar: { display: 'flex', alignItems: 'center', gap: mob ? 8 : 12, padding: mob ? '10px 14px' : '13px 18px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: 10, marginBottom: mob ? 14 : 22, fontSize: mob ? 13 : 14, color: '#888' },
+    tag: { display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.25)', borderRadius: 6, padding: mob ? '4px 8px' : '5px 12px', fontSize: mob ? 12 : 14, color: '#e03d00' },
+    card: { background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: mob ? 12 : 14, marginBottom: mob ? 12 : 16, overflow: 'hidden' },
+    cardHeader: { padding: mob ? '14px 14px 10px' : '18px 22px 14px', borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: mob ? 'stretch' : 'flex-start', justifyContent: 'space-between', gap: mob ? 10 : 14, flexDirection: mob ? 'column' as const : 'row' as const },
+    subBadge: { fontSize: mob ? 11 : 13, fontWeight: 600, color: '#ff4500', background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.2)', borderRadius: 6, padding: mob ? '2px 7px' : '3px 10px' },
+    postTitle: { fontFamily: 'Syne, sans-serif', fontSize: mob ? 15 : 18, fontWeight: 600, lineHeight: 1.4, marginTop: 6, color: '#1a1a1a' },
+    analysisBox: { background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, padding: mob ? 14 : 18, fontSize: mob ? 13 : 14, lineHeight: 1.9, color: '#444', whiteSpace: 'pre-wrap' as const },
+    divider: { height: 1, background: '#e0e0e0', margin: mob ? '12px 0' : '18px 0' },
+    lengthBar: { display: 'flex', gap: 0, background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, padding: 3, overflow: 'hidden', flexShrink: 0 },
+    lengthPill: { fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 11 : 12, fontWeight: 600, padding: mob ? '6px 8px' : '7px 14px', border: 'none', cursor: 'pointer', borderRadius: 8, transition: 'all 0.15s', whiteSpace: 'nowrap' as const },
+    packBar: { display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 12 },
+    packBtn: { fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 11 : 12, fontWeight: 600, padding: mob ? '5px 10px' : '6px 14px', border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#888', transition: 'all 0.15s' },
+    packBtnActive: { background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.3)', color: '#e03d00' },
+  }
 }
 
 const LENGTH_OPTIONS = [
@@ -138,6 +152,8 @@ const LENGTH_OPTIONS = [
 
 /* ─── MAIN COMPONENT ─────────────────────────────────────────────────── */
 export default function Page() {
+  const mob = useIsMobile()
+  const S = getStyles(mob)
   const [tab, setTab] = useState<Tab>('search')
   const [keywords, setKeywords] = useState<string[]>([])
   const [kwInput, setKwInput] = useState('')
@@ -303,13 +319,13 @@ export default function Page() {
               <span style={{ color: '#999' }}> // reddit</span>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: mob ? 6 : 12, flexShrink: 0 }}>
             {productSaved && (
-              <span style={{ fontSize: 12, color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)', borderRadius: 6, padding: '4px 10px', fontFamily: 'IBM Plex Mono, monospace' }}>
+              <span style={{ fontSize: mob ? 10 : 12, color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)', borderRadius: 6, padding: mob ? '3px 6px' : '4px 10px', fontFamily: 'IBM Plex Mono, monospace', maxWidth: mob ? 100 : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                 📦 {productInfo.name}
               </span>
             )}
-            <div style={S.headerTag}>Reply Engine</div>
+            {!mob && <div style={S.headerTag}>Reply Engine</div>}
           </div>
         </header>
 
@@ -328,7 +344,7 @@ export default function Page() {
             <p style={{ fontSize: 14, color: '#888', marginBottom: 20, lineHeight: 1.6 }}>
               Fill in your product info. When saved, AI will casually pitch your product in replies where it{"'"}s genuinely relevant — like a real user recommending a tool they love.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
                 <label style={S.label}>Product Name</label>
                 <input style={S.input} value={productInfo.name} onChange={e => setProductInfo(p => ({ ...p, name: e.target.value }))} placeholder="e.g. dight.pro" />
@@ -356,7 +372,7 @@ export default function Page() {
                 placeholder={"e.g.\nAuto-scores leads from Reddit, Twitter, LinkedIn\nAI-generated outreach drafts\nIntegrates with your CRM\nFree tier available"}
               />
             </div>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' as const }}>
               <button style={{ ...S.btn, opacity: productInfo.name.trim() ? 1 : 0.5 }} disabled={!productInfo.name.trim()} onClick={() => { setProductSaved(true); saveLocal('rr_product_info', productInfo); showToast(`Product "${productInfo.name}" saved — AI will use it in replies`, 'success') }}>
                 💾 Save Product
               </button>
@@ -409,7 +425,7 @@ export default function Page() {
                 </div>
               )}
               <div style={{ ...S.divider, marginTop: 18 }} />
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 12, alignItems: 'flex-end' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : '2fr 1fr 1fr auto', gap: 12, alignItems: 'flex-end' }}>
                 <div>
                   <label style={S.label}>Subreddits (comma-sep, blank = all)</label>
                   <input style={S.input} value={subreddits} onChange={e => setSubreddits(e.target.value)} placeholder="SaaS, freelance, entrepreneur" />
@@ -446,6 +462,7 @@ export default function Page() {
                 key={post.id} post={post} reply={replies[post.id] || ''} isGenerating={!!generating[post.id]}
                 tone={tones[post.id] || 'helpful'} length={lengths[post.id] || 'short'}
                 ctx={customCtx[post.id] || ''} showCtxPanel={!!showCtx[post.id]} replyOpen={!!openReplies[post.id]}
+                mob={mob}
                 onToneChange={t => setTones(x => ({ ...x, [post.id]: t }))}
                 onLengthChange={l => setLengths(x => ({ ...x, [post.id]: l }))}
                 onCtxChange={t => setCustomCtx(x => ({ ...x, [post.id]: t }))}
@@ -465,30 +482,30 @@ export default function Page() {
           <>
             <div style={S.panel}>
               <div style={S.panelTitle}>🔗 Paste a Reddit thread URL</div>
-              <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ display: 'flex', gap: mob ? 8 : 12, flexDirection: mob ? 'column' as const : 'row' as const }}>
                 <input style={{ ...S.input, flex: 1 }} value={inspectUrl} onChange={e => setInspectUrl(e.target.value)} placeholder="https://reddit.com/r/SaaS/comments/..." onKeyDown={e => e.key === 'Enter' && runInspect()} />
-                <button style={{ ...S.btn, opacity: inspecting ? 0.5 : 1 }} onClick={runInspect} disabled={inspecting}>
+                <button style={{ ...S.btn, opacity: inspecting ? 0.5 : 1, width: mob ? '100%' : undefined }} onClick={runInspect} disabled={inspecting}>
                   {inspecting ? 'Analyzing...' : 'Inspect'}
                 </button>
               </div>
-              <p style={{ fontSize: 13, color: '#999', marginTop: 10 }}>AI fetches the thread, reads top comments, and surfaces reply opportunities.</p>
+              <p style={{ fontSize: mob ? 12 : 13, color: '#999', marginTop: 10 }}>AI fetches the thread, reads top comments, and surfaces reply opportunities.</p>
             </div>
             {inspectResult && (
               <>
                 <div style={S.card}>
-                  <div style={S.cardHeader}>
+                  <div style={{ ...S.cardHeader, flexDirection: mob ? 'column' as const : 'row' as const }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' as const }}>
                         <span style={S.subBadge}>r/{inspectResult.post.subreddit}</span>
-                        <span style={{ fontSize: 13, color: '#999' }}>{timeAgo(inspectResult.post.created_utc)} · ▲ {inspectResult.post.score} · 💬 {inspectResult.post.num_comments}</span>
+                        <span style={{ fontSize: mob ? 11 : 13, color: '#999' }}>{timeAgo(inspectResult.post.created_utc)} · ▲ {inspectResult.post.score} · 💬 {inspectResult.post.num_comments}</span>
                       </div>
                       <div style={S.postTitle}>{inspectResult.post.title}</div>
                     </div>
                     <a href={`https://reddit.com${inspectResult.post.permalink}`} target="_blank" rel="noopener noreferrer" style={{ ...S.btn, ...S.btnSm, background: 'transparent', border: '1px solid #e0e0e0', color: '#888', textDecoration: 'none', display: 'inline-block' }}>↗ View</a>
                   </div>
                   {inspectResult.post.selftext && (
-                    <div style={{ padding: '14px 22px', fontSize: 15, color: '#666', lineHeight: 1.6, maxHeight: 100, overflow: 'hidden' }}>
-                      {inspectResult.post.selftext.slice(0, 400)}
+                    <div style={{ padding: mob ? '10px 12px' : '14px 22px', fontSize: mob ? 13 : 15, color: '#666', lineHeight: 1.6, maxHeight: 100, overflow: 'hidden' }}>
+                      {inspectResult.post.selftext.slice(0, mob ? 250 : 400)}
                     </div>
                   )}
                 </div>
@@ -500,17 +517,17 @@ export default function Page() {
                   <div style={S.panel}>
                     <div style={S.panelTitle}>💬 Top Comments</div>
                     {inspectResult.comments.map((c, i) => (
-                      <div key={i} style={{ padding: '14px 0', borderBottom: i < inspectResult.comments.length - 1 ? '1px solid #e0e0e0' : 'none' }}>
-                        <div style={{ fontSize: 13, color: '#999', marginBottom: 6 }}>u/{c.author} · ▲ {c.score}</div>
-                        <div style={{ fontSize: 15, color: '#444', lineHeight: 1.6 }}>{c.body.slice(0, 400)}{c.body.length > 400 ? '...' : ''}</div>
+                      <div key={i} style={{ padding: mob ? '10px 0' : '14px 0', borderBottom: i < inspectResult.comments.length - 1 ? '1px solid #e0e0e0' : 'none' }}>
+                        <div style={{ fontSize: mob ? 11 : 13, color: '#999', marginBottom: 6 }}>u/{c.author} · ▲ {c.score}</div>
+                        <div style={{ fontSize: mob ? 13 : 15, color: '#444', lineHeight: 1.6 }}>{c.body.slice(0, mob ? 250 : 400)}{c.body.length > (mob ? 250 : 400) ? '...' : ''}</div>
                       </div>
                     ))}
                   </div>
                 )}
                 <div style={S.panel}>
                   <div style={S.panelTitle}>✍ Write Your Reply</div>
-                  <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' as const, alignItems: 'center' }}>
-                    <select style={{ ...S.input, flex: 1, minWidth: 160 }} value={tones['inspect'] || 'helpful'} onChange={e => setTones(x => ({ ...x, inspect: e.target.value }))}>
+                  <div style={{ display: 'flex', gap: mob ? 8 : 12, marginBottom: 12, flexWrap: 'wrap' as const, alignItems: 'center' }}>
+                    <select style={{ ...S.input, flex: 1, minWidth: mob ? 120 : 160 }} value={tones['inspect'] || 'helpful'} onChange={e => setTones(x => ({ ...x, inspect: e.target.value }))}>
                       <option value="helpful">Helpful / Educational</option>
                       <option value="casual">Casual / Conversational</option>
                       <option value="expert">Expert / Authoritative</option>
@@ -520,18 +537,18 @@ export default function Page() {
                     <div style={S.lengthBar}>
                       {LENGTH_OPTIONS.map(lo => (
                         <button key={lo.value} style={{ ...S.lengthPill, background: (lengths['inspect'] || 'short') === lo.value ? '#ff4500' : 'transparent', color: (lengths['inspect'] || 'short') === lo.value ? '#fff' : '#888' }} onClick={() => setLengths(x => ({ ...x, inspect: lo.value }))}>
-                          {lo.label}
+                          {mob ? lo.label.split(' ')[0] : lo.label}
                         </button>
                       ))}
                     </div>
-                    <button style={{ ...S.btn, opacity: generating['inspect'] ? 0.5 : 1 }} disabled={generating['inspect']} onClick={() => generateReply('inspect', inspectResult.post)}>
+                    <button style={{ ...S.btn, opacity: generating['inspect'] ? 0.5 : 1, width: mob ? '100%' : undefined }} disabled={generating['inspect']} onClick={() => generateReply('inspect', inspectResult.post)}>
                       {generating['inspect'] ? '...' : '✨ Generate'}
                     </button>
                   </div>
-                  <textarea style={{ ...S.input, minHeight: 120, resize: 'vertical', lineHeight: 1.6 }} value={replies['inspect'] || ''} onChange={e => setReplies(r => ({ ...r, inspect: e.target.value }))} placeholder="Generated reply appears here..." />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+                  <textarea style={{ ...S.input, minHeight: mob ? 100 : 120, resize: 'vertical', lineHeight: 1.6 }} value={replies['inspect'] || ''} onChange={e => setReplies(r => ({ ...r, inspect: e.target.value }))} placeholder="Generated reply appears here..." />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10, flexWrap: 'wrap' as const }}>
                     <button style={S.btnGhost} onClick={() => copyText(replies['inspect'] || '')}>📋 Copy</button>
-                    <a href={`https://reddit.com${inspectResult.post.permalink}`} target="_blank" rel="noopener noreferrer" style={{ ...S.btn, textDecoration: 'none', display: 'inline-block' }}>Post on Reddit ↗</a>
+                    <a href={`https://reddit.com${inspectResult.post.permalink}`} target="_blank" rel="noopener noreferrer" style={{ ...S.btn, textDecoration: 'none', display: 'inline-block' }}>{mob ? 'Post ↗' : 'Post on Reddit ↗'}</a>
                   </div>
                 </div>
               </>
@@ -544,65 +561,65 @@ export default function Page() {
           <>
             <div style={S.panel}>
               <div style={S.panelTitle}>🧠 AI System Prompt</div>
-              <p style={{ fontSize: 14, color: '#888', marginBottom: 16, lineHeight: 1.6 }}>
+              <p style={{ fontSize: mob ? 12 : 14, color: '#888', marginBottom: mob ? 10 : 16, lineHeight: 1.6 }}>
                 Customize the system prompt that drives reply generation. Use these placeholders — they{"'"}ll be replaced at generation time:
               </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: 18 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: mob ? 5 : 8, marginBottom: mob ? 12 : 18 }}>
                 {['{{post_title}}', '{{post_body}}', '{{subreddit}}', '{{identity}}', '{{tone_instruction}}', '{{length_instruction}}', '{{product_block}}', '{{custom_context}}'].map(p => (
-                  <code key={p} style={{ fontSize: 12, fontFamily: 'IBM Plex Mono, monospace', background: 'rgba(255,69,0,0.06)', border: '1px solid rgba(255,69,0,0.2)', borderRadius: 5, padding: '3px 8px', color: '#e03d00' }}>{p}</code>
+                  <code key={p} style={{ fontSize: mob ? 10 : 12, fontFamily: 'IBM Plex Mono, monospace', background: 'rgba(255,69,0,0.06)', border: '1px solid rgba(255,69,0,0.2)', borderRadius: 5, padding: mob ? '2px 6px' : '3px 8px', color: '#e03d00' }}>{p}</code>
                 ))}
               </div>
               <textarea
-                style={{ ...S.input, minHeight: 360, resize: 'vertical' as const, lineHeight: 1.7, fontSize: 14 }}
+                style={{ ...S.input, minHeight: mob ? 220 : 360, resize: 'vertical' as const, lineHeight: 1.7, fontSize: mob ? 13 : 14 }}
                 value={systemPrompt}
                 onChange={e => { setSystemPrompt(e.target.value); setPromptSaved(false) }}
                 spellCheck={false}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
-                <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: mob ? 10 : 14, flexWrap: 'wrap' as const, gap: 8 }}>
+                <div style={{ display: 'flex', gap: mob ? 6 : 10, flexWrap: 'wrap' as const }}>
                   <button style={S.btn} onClick={() => { saveLocal('rr_system_prompt', systemPrompt); setPromptSaved(true); showToast('Prompt saved', 'success') }}>
-                    💾 Save Prompt
+                    💾 Save{mob ? '' : ' Prompt'}
                   </button>
                   <button style={S.btnGhost} onClick={() => { setSystemPrompt(DEFAULT_PROMPT); setPromptSaved(false); showToast('Reset to default prompt', '') }}>
-                    ↩ Reset Default
+                    ↩ Reset{mob ? '' : ' Default'}
                   </button>
                 </div>
-                {promptSaved && <span style={{ fontSize: 13, color: '#16a34a' }}>✓ Saved</span>}
-                {!promptSaved && <span style={{ fontSize: 13, color: '#ff4500' }}>● Unsaved changes</span>}
+                {promptSaved && <span style={{ fontSize: mob ? 11 : 13, color: '#16a34a' }}>✓ Saved</span>}
+                {!promptSaved && <span style={{ fontSize: mob ? 11 : 13, color: '#ff4500' }}>● Unsaved</span>}
               </div>
             </div>
 
             <div style={S.panel}>
               <div style={S.panelTitle}>📦 Keyword Packs Manager</div>
-              <p style={{ fontSize: 14, color: '#888', marginBottom: 16, lineHeight: 1.6 }}>
+              <p style={{ fontSize: mob ? 12 : 14, color: '#888', marginBottom: mob ? 10 : 16, lineHeight: 1.6 }}>
                 Manage reusable keyword packs. Click a pack name in the Search tab to instantly load it.
               </p>
               {keywordPacks.map((pack, i) => (
-                <div key={i} style={{ padding: '14px 0', borderBottom: i < keywordPacks.length - 1 ? '1px solid #e0e0e0' : 'none' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div key={i} style={{ padding: mob ? '10px 0' : '14px 0', borderBottom: i < keywordPacks.length - 1 ? '1px solid #e0e0e0' : 'none' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
                     <input
-                      style={{ ...S.input, width: 200, fontWeight: 600, fontSize: 14 }}
+                      style={{ ...S.input, flex: 1, maxWidth: mob ? undefined : 200, fontWeight: 600, fontSize: mob ? 13 : 14 }}
                       value={pack.name}
                       onChange={e => { const p = [...keywordPacks]; p[i] = { ...p[i], name: e.target.value }; setKeywordPacks(p) }}
                     />
-                    <button style={{ ...S.btnGhost, color: '#e03d00', borderColor: 'rgba(255,69,0,0.3)', fontSize: 13 }} onClick={() => { const p = keywordPacks.filter((_, j) => j !== i); setKeywordPacks(p); showToast('Pack deleted', '') }}>
-                      🗑 Delete
+                    <button style={{ ...S.btnGhost, color: '#e03d00', borderColor: 'rgba(255,69,0,0.3)', fontSize: mob ? 11 : 13, flexShrink: 0, padding: mob ? '6px 10px' : undefined }} onClick={() => { const p = keywordPacks.filter((_, j) => j !== i); setKeywordPacks(p); showToast('Pack deleted', '') }}>
+                      🗑{mob ? '' : ' Delete'}
                     </button>
                   </div>
                   <textarea
-                    style={{ ...S.input, minHeight: 50, resize: 'vertical' as const, fontSize: 13, lineHeight: 1.6 }}
+                    style={{ ...S.input, minHeight: 50, resize: 'vertical' as const, fontSize: mob ? 12 : 13, lineHeight: 1.6 }}
                     value={pack.keywords.join(', ')}
                     onChange={e => { const p = [...keywordPacks]; p[i] = { ...p[i], keywords: e.target.value.split(',').map(k => k.trim()).filter(Boolean) }; setKeywordPacks(p) }}
                   />
                 </div>
               ))}
-              <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
+              <div style={{ marginTop: mob ? 10 : 14, display: 'flex', gap: mob ? 6 : 10, flexWrap: 'wrap' as const }}>
                 <button style={S.btnGhost} onClick={() => setKeywordPacks([...keywordPacks, { name: '📌 New Pack', keywords: [] }])}>
                   + Add Pack
                 </button>
                 {keywords.length > 0 && (
                   <button style={S.btnGhost} onClick={() => { setKeywordPacks([...keywordPacks, { name: `💾 Saved (${new Date().toLocaleDateString()})`, keywords: [...keywords] }]); showToast('Current keywords saved as pack', 'success') }}>
-                    💾 Save Current Keywords as Pack
+                    💾 {mob ? 'Save Keywords' : 'Save Current Keywords as Pack'}
                   </button>
                 )}
               </div>
@@ -613,11 +630,12 @@ export default function Page() {
 
       {toast && (
         <div style={{
-          position: 'fixed', bottom: 24, right: 24, background: '#ffffff',
+          position: 'fixed', bottom: mob ? 12 : 24, right: mob ? 12 : 24, left: mob ? 12 : undefined, background: '#ffffff',
           border: `1px solid ${toast.type === 'success' ? '#16a34a' : toast.type === 'error' ? '#ff4500' : '#e0e0e0'}`,
-          borderRadius: 10, padding: '14px 22px', fontSize: 15,
+          borderRadius: 10, padding: mob ? '10px 14px' : '14px 22px', fontSize: mob ? 13 : 15,
           color: toast.type === 'success' ? '#16a34a' : toast.type === 'error' ? '#e03d00' : '#1a1a1a',
           zIndex: 9999, fontFamily: 'IBM Plex Mono, monospace', boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+          textAlign: mob ? 'center' as const : undefined,
         }}>
           {toast.msg}
         </div>
@@ -628,20 +646,21 @@ export default function Page() {
 
 /* ─── POST CARD ─────────────────────────────────────────────────────── */
 function PostCard({
-  post, reply, isGenerating, tone, length, ctx, showCtxPanel, replyOpen,
+  post, reply, isGenerating, tone, length, ctx, showCtxPanel, replyOpen, mob,
   onToneChange, onLengthChange, onCtxChange, onToggleCtx, onToggleReply,
   onGenerate, onReplyChange, onCopy, onInspect,
 }: {
   post: RedditPost; reply: string; isGenerating: boolean; tone: string; length: string
-  ctx: string; showCtxPanel: boolean; replyOpen: boolean
+  ctx: string; showCtxPanel: boolean; replyOpen: boolean; mob: boolean
   onToneChange: (t: string) => void; onLengthChange: (l: string) => void
   onCtxChange: (t: string) => void; onToggleCtx: () => void; onToggleReply: () => void
   onGenerate: () => void; onReplyChange: (t: string) => void; onCopy: () => void; onInspect: () => void
 }) {
+  const S = getStyles(mob)
   const S2: Record<string, React.CSSProperties> = {
-    card: { background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: 14, marginBottom: 16, overflow: 'hidden' },
-    cardHeader: { padding: '18px 22px 14px', borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 },
-    subBadge: { fontSize: 13, fontWeight: 600, color: '#ff4500', background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.2)', borderRadius: 6, padding: '3px 10px' },
+    card: { background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: mob ? 12 : 14, marginBottom: mob ? 12 : 16, overflow: 'hidden' },
+    cardHeader: { padding: mob ? '12px 12px 10px' : '18px 22px 14px', borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: mob ? 'stretch' : 'flex-start', justifyContent: 'space-between', gap: mob ? 10 : 14, flexDirection: mob ? 'column' as const : 'row' as const },
+    subBadge: { fontSize: mob ? 11 : 13, fontWeight: 600, color: '#ff4500', background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.2)', borderRadius: 6, padding: mob ? '2px 7px' : '3px 10px' },
   }
   const redditUrl = `https://reddit.com${post.permalink}`
 
@@ -649,61 +668,61 @@ function PostCard({
     <div style={S2.card}>
       <div style={S2.cardHeader}>
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const, marginBottom: 8 }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const, marginBottom: 8 }}>
             <span style={S2.subBadge}>r/{post.subreddit}</span>
-            <span style={{ fontSize: 13, color: '#999' }}>{timeAgo(post.created_utc)}</span>
-            <span style={{ fontSize: 13, color: '#888' }}>▲ {post.score} · 💬 {post.num_comments}</span>
-            {post.link_flair_text && <span style={{ fontSize: 13, color: '#888', background: '#f0f0f0', border: '1px solid #e0e0e0', borderRadius: 4, padding: '2px 8px' }}>{post.link_flair_text}</span>}
+            <span style={{ fontSize: mob ? 11 : 13, color: '#999' }}>{timeAgo(post.created_utc)}</span>
+            <span style={{ fontSize: mob ? 11 : 13, color: '#888' }}>▲ {post.score} · 💬 {post.num_comments}</span>
+            {post.link_flair_text && <span style={{ fontSize: mob ? 11 : 13, color: '#888', background: '#f0f0f0', border: '1px solid #e0e0e0', borderRadius: 4, padding: '2px 8px' }}>{post.link_flair_text}</span>}
           </div>
-          <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 600, lineHeight: 1.4, color: '#1a1a1a' }}>{post.title}</div>
+          <div style={{ fontFamily: 'Syne, sans-serif', fontSize: mob ? 15 : 18, fontWeight: 600, lineHeight: 1.4, color: '#1a1a1a' }}>{post.title}</div>
           {post.selftext && (
-            <div style={{ fontSize: 14, color: '#666', marginTop: 8, lineHeight: 1.6 }}>
-              {post.selftext.slice(0, 200)}{post.selftext.length > 200 ? '...' : ''}
+            <div style={{ fontSize: mob ? 13 : 14, color: '#666', marginTop: 8, lineHeight: 1.6 }}>
+              {post.selftext.slice(0, mob ? 120 : 200)}{post.selftext.length > (mob ? 120 : 200) ? '...' : ''}
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          <button onClick={onInspect} title="Inspect this thread" style={{ background: 'transparent', border: '1px solid #e0e0e0', color: '#888', borderRadius: 8, fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '8px 14px', cursor: 'pointer' }}>🔍</button>
-          <a href={redditUrl} target="_blank" rel="noopener noreferrer" style={{ background: 'transparent', border: '1px solid #e0e0e0', color: '#888', borderRadius: 8, fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '8px 14px', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>↗</a>
-          <button onClick={onToggleReply} style={{ background: replyOpen ? '#ff4500' : 'transparent', border: '1px solid ' + (replyOpen ? '#ff4500' : '#e0e0e0'), color: replyOpen ? '#fff' : '#888', borderRadius: 8, fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '8px 16px', cursor: 'pointer' }}>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0, ...(mob ? { justifyContent: 'flex-end' } : {}) }}>
+          <button onClick={onInspect} title="Inspect this thread" style={{ background: 'transparent', border: '1px solid #e0e0e0', color: '#888', borderRadius: 8, fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 12 : 14, padding: mob ? '6px 10px' : '8px 14px', cursor: 'pointer' }}>🔍</button>
+          <a href={redditUrl} target="_blank" rel="noopener noreferrer" style={{ background: 'transparent', border: '1px solid #e0e0e0', color: '#888', borderRadius: 8, fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 12 : 14, padding: mob ? '6px 10px' : '8px 14px', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>↗</a>
+          <button onClick={onToggleReply} style={{ background: replyOpen ? '#ff4500' : 'transparent', border: '1px solid ' + (replyOpen ? '#ff4500' : '#e0e0e0'), color: replyOpen ? '#fff' : '#888', borderRadius: 8, fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 12 : 14, padding: mob ? '6px 12px' : '8px 16px', cursor: 'pointer' }}>
             {replyOpen ? 'Close' : 'Reply'}
           </button>
         </div>
       </div>
 
       {replyOpen && (
-        <div style={{ padding: '18px 22px', borderTop: '1px solid #e0e0e0' }}>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' as const, alignItems: 'center' }}>
-            <select value={tone} onChange={e => onToneChange(e.target.value)} style={{ flex: 1, minWidth: 160, background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '10px 14px', outline: 'none' }}>
-              <option value="helpful">Helpful / Educational</option>
-              <option value="casual">Casual / Conversational</option>
-              <option value="expert">Expert / Authoritative</option>
-              <option value="curious">Curious / Questioning</option>
-              <option value="witty">Witty / Light</option>
+        <div style={{ padding: mob ? '12px 12px' : '18px 22px', borderTop: '1px solid #e0e0e0' }}>
+          <div style={{ display: 'flex', gap: mob ? 8 : 12, marginBottom: 12, flexWrap: 'wrap' as const, alignItems: 'center' }}>
+            <select value={tone} onChange={e => onToneChange(e.target.value)} style={{ flex: 1, minWidth: mob ? 120 : 160, background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 13 : 14, padding: mob ? '8px 10px' : '10px 14px', outline: 'none' }}>
+              <option value="helpful">Helpful</option>
+              <option value="casual">Casual</option>
+              <option value="expert">Expert</option>
+              <option value="curious">Curious</option>
+              <option value="witty">Witty</option>
             </select>
             <div style={S.lengthBar}>
               {LENGTH_OPTIONS.map(lo => (
                 <button key={lo.value} style={{ ...S.lengthPill, background: length === lo.value ? '#ff4500' : 'transparent', color: length === lo.value ? '#fff' : '#888' }} onClick={() => onLengthChange(lo.value)}>
-                  {lo.label}
+                  {mob ? lo.label.split(' ')[0] : lo.label}
                 </button>
               ))}
             </div>
-            <button onClick={onGenerate} disabled={isGenerating} style={{ background: '#ff4500', border: 'none', borderRadius: 10, color: '#fff', fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, fontWeight: 600, padding: '10px 20px', cursor: isGenerating ? 'not-allowed' : 'pointer', opacity: isGenerating ? 0.5 : 1 }}>
-              {isGenerating ? 'Generating...' : '✨ Generate'}
+            <button onClick={onGenerate} disabled={isGenerating} style={{ background: '#ff4500', border: 'none', borderRadius: 10, color: '#fff', fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 13 : 14, fontWeight: 600, padding: mob ? '8px 14px' : '10px 20px', cursor: isGenerating ? 'not-allowed' : 'pointer', opacity: isGenerating ? 0.5 : 1, width: mob ? '100%' : undefined }}>
+              {isGenerating ? '...' : '✨ Generate'}
             </button>
           </div>
-          <button onClick={onToggleCtx} style={{ background: 'none', border: 'none', color: '#999', fontFamily: 'IBM Plex Mono, monospace', fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: showCtxPanel ? 10 : 14, textDecoration: 'underline' }}>
-            {showCtxPanel ? '− hide' : '+ custom context'}
+          <button onClick={onToggleCtx} style={{ background: 'none', border: 'none', color: '#999', fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 12 : 13, cursor: 'pointer', padding: 0, marginBottom: showCtxPanel ? 10 : 14, textDecoration: 'underline' }}>
+            {showCtxPanel ? '− hide' : '+ context'}
           </button>
           {showCtxPanel && (
-            <textarea value={ctx} onChange={e => onCtxChange(e.target.value)} placeholder="Extra context for AI..." style={{ width: '100%', background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '12px 14px', outline: 'none', minHeight: 70, resize: 'vertical' as const, marginBottom: 12 }} />
+            <textarea value={ctx} onChange={e => onCtxChange(e.target.value)} placeholder="Extra context for AI..." style={{ width: '100%', background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 13 : 14, padding: mob ? '10px 12px' : '12px 14px', outline: 'none', minHeight: 70, resize: 'vertical' as const, marginBottom: 12, boxSizing: 'border-box' as const }} />
           )}
-          <textarea value={reply} onChange={e => onReplyChange(e.target.value)} placeholder="Generated reply appears here..." style={{ width: '100%', background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: 15, padding: '12px 14px', outline: 'none', minHeight: 110, resize: 'vertical' as const, lineHeight: 1.7 }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-            <span style={{ fontSize: 13, color: '#999' }}>{reply.length} chars</span>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={onCopy} style={{ background: 'transparent', border: '1px solid #e0e0e0', color: '#888', borderRadius: 8, fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, padding: '8px 16px', cursor: 'pointer' }}>📋 Copy</button>
-              <a href={redditUrl} target="_blank" rel="noopener noreferrer" style={{ background: '#ff4500', border: 'none', borderRadius: 8, color: '#fff', fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, fontWeight: 600, padding: '8px 16px', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>Post on Reddit ↗</a>
+          <textarea value={reply} onChange={e => onReplyChange(e.target.value)} placeholder="Generated reply appears here..." style={{ width: '100%', background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, color: '#1a1a1a', fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 14 : 15, padding: mob ? '10px 12px' : '12px 14px', outline: 'none', minHeight: mob ? 90 : 110, resize: 'vertical' as const, lineHeight: 1.7, boxSizing: 'border-box' as const }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, flexWrap: 'wrap' as const, gap: 8 }}>
+            <span style={{ fontSize: mob ? 11 : 13, color: '#999' }}>{reply.length} chars</span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={onCopy} style={{ background: 'transparent', border: '1px solid #e0e0e0', color: '#888', borderRadius: 8, fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 12 : 14, padding: mob ? '6px 12px' : '8px 16px', cursor: 'pointer' }}>📋 Copy</button>
+              <a href={redditUrl} target="_blank" rel="noopener noreferrer" style={{ background: '#ff4500', border: 'none', borderRadius: 8, color: '#fff', fontFamily: 'IBM Plex Mono, monospace', fontSize: mob ? 12 : 14, fontWeight: 600, padding: mob ? '6px 12px' : '8px 16px', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>Post ↗</a>
             </div>
           </div>
         </div>

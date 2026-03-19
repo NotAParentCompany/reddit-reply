@@ -322,9 +322,17 @@ export default function Page() {
     } finally { setInspecting(false) }
   }
 
-  function copyText(text: string) {
+  function copyText(text: string, meta?: { source_tab?: string; post_title?: string; subreddit?: string; comment_author?: string; reddit_url?: string }) {
     navigator.clipboard.writeText(text)
     showToast('Copied!', 'success')
+    // Save to Supabase (fire-and-forget)
+    if (text.trim()) {
+      fetch('/api/copied', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reply_text: text, ...meta }),
+      }).catch(() => {})
+    }
   }
 
   const dotColor = status.state === 'active' ? '#16a34a' : status.state === 'loading' ? '#ff4500' : '#ccc'
@@ -517,7 +525,7 @@ export default function Page() {
                 onToggleReply={() => setOpenReplies(x => ({ ...x, [post.id]: !x[post.id] }))}
                 onGenerate={() => generateReply(post.id, { title: post.title, selftext: post.selftext, subreddit: post.subreddit })}
                 onReplyChange={t => setReplies(x => ({ ...x, [post.id]: t }))}
-                onCopy={() => copyText(replies[post.id] || '')}
+                onCopy={() => copyText(replies[post.id] || '', { source_tab: 'search', post_title: post.title, subreddit: post.subreddit, reddit_url: `https://reddit.com${post.permalink}` })}
                 onInspect={() => inspectPost(post)}
               />
             ))}
@@ -601,7 +609,7 @@ export default function Page() {
                                 onChange={e => setReplies(r => ({ ...r, [cId]: e.target.value }))}
                               />
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 6 }}>
-                                <button style={{ ...S.btnGhost, ...S.btnSm }} onClick={() => copyText(replies[cId])}>📋 Copy</button>
+                                <button style={{ ...S.btnGhost, ...S.btnSm }} onClick={() => copyText(replies[cId], { source_tab: 'inspect', post_title: inspectResult.post.title, subreddit: inspectResult.post.subreddit, comment_author: c.author, reddit_url: `https://reddit.com${inspectResult.post.permalink}` })}>📋 Copy</button>
                                 <a href={`https://reddit.com${inspectResult.post.permalink}`} target="_blank" rel="noopener noreferrer" style={{ ...S.btn, ...S.btnSm, textDecoration: 'none', display: 'inline-block' }}>Post ↗</a>
                               </div>
                             </div>
@@ -634,7 +642,7 @@ export default function Page() {
                   </div>
                   <textarea style={{ ...S.input, minHeight: mob ? 100 : 120, resize: 'vertical', lineHeight: 1.6 }} value={replies['inspect'] || ''} onChange={e => setReplies(r => ({ ...r, inspect: e.target.value }))} placeholder="Generated reply appears here..." />
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10, flexWrap: 'wrap' as const }}>
-                    <button style={S.btnGhost} onClick={() => copyText(replies['inspect'] || '')}>📋 Copy</button>
+                    <button style={S.btnGhost} onClick={() => copyText(replies['inspect'] || '', { source_tab: 'inspect', post_title: inspectResult.post.title, subreddit: inspectResult.post.subreddit, reddit_url: `https://reddit.com${inspectResult.post.permalink}` })}>📋 Copy</button>
                     <a href={`https://reddit.com${inspectResult.post.permalink}`} target="_blank" rel="noopener noreferrer" style={{ ...S.btn, textDecoration: 'none', display: 'inline-block' }}>{mob ? 'Post ↗' : 'Post on Reddit ↗'}</a>
                   </div>
                 </div>

@@ -490,3 +490,17 @@ insert into activity_log (event_type, event_data) values
 -- Average generation time by length:
 -- select length_option, round(avg(duration_ms)) as avg_ms, count(*) 
 --   from generated_replies where status = 'success' group by length_option;
+
+-- ─── COPIED REPLIES (standalone, no FK deps) ────────────────────────────────
+create table if not exists copied_replies (
+  id              uuid primary key default uuid_generate_v4(),
+  reply_text      text not null,
+  source_tab      text check (source_tab in ('search', 'inspect')),
+  post_title      text,
+  subreddit       text,
+  comment_author  text,
+  reddit_url      text,
+  copied_at       timestamptz not null default now()
+);
+
+create index if not exists idx_copied_replies_at on copied_replies(copied_at desc);

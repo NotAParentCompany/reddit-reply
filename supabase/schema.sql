@@ -273,18 +273,56 @@ create index idx_product_changes_time on product_changes(changed_at desc);
 
 -- ─── DAILY STATS (materialized view) ────────────────────────────────────────
 create materialized view daily_stats as
+with days as (
+  select generate_series(
+    (select min(date_trunc('day', created_at))::date from searches),
+    current_date,
+    '1 day'::interval
+  )::date as day
+),
+search_stats as (
+  select date_trunc('day', created_at)::date as day,
+         count(distinct id) as total_searches,
+         coalesce(sum(results_count), 0) as total_posts_found
+  from searches group by 1
+),
+reply_stats as (
+  select date_trunc('day', created_at)::date as day,
+         count(*) as total_replies,
+         count(*) filter (where product_was_active = true) as replies_with_product
+  from generated_replies group by 1
+),
+copy_stats as (
+  select date_trunc('day', created_at)::date as day,
+         count(*) as total_copies
+  from copy_events group by 1
+),
+inspect_stats as (
+  select date_trunc('day', created_at)::date as day,
+         count(*) as total_inspections
+  from inspections group by 1
+),
+error_stats as (
+  select date_trunc('day', created_at)::date as day,
+         count(*) as api_errors
+  from api_calls where status = 'error' group by 1
+)
 select
-  date_trunc('day', s.created_at)::date as day,
-  count(distinct s.id) as total_searches,
-  sum(s.results_count) as total_posts_found,
-  (select count(*) from generated_replies gr where date_trunc('day', gr.created_at)::date = date_trunc('day', s.created_at)::date) as total_replies,
-  (select count(*) from generated_replies gr where gr.product_was_active = true and date_trunc('day', gr.created_at)::date = date_trunc('day', s.created_at)::date) as replies_with_product,
-  (select count(*) from copy_events ce where date_trunc('day', ce.created_at)::date = date_trunc('day', s.created_at)::date) as total_copies,
-  (select count(*) from inspections i where date_trunc('day', i.created_at)::date = date_trunc('day', s.created_at)::date) as total_inspections,
-  (select count(*) from api_calls ac where ac.status = 'error' and date_trunc('day', ac.created_at)::date = date_trunc('day', s.created_at)::date) as api_errors
-from searches s
-group by date_trunc('day', s.created_at)::date
-order by day desc;
+  d.day,
+  coalesce(ss.total_searches, 0) as total_searches,
+  coalesce(ss.total_posts_found, 0) as total_posts_found,
+  coalesce(rs.total_replies, 0) as total_replies,
+  coalesce(rs.replies_with_product, 0) as replies_with_product,
+  coalesce(cs.total_copies, 0) as total_copies,
+  coalesce(is2.total_inspections, 0) as total_inspections,
+  coalesce(es.api_errors, 0) as api_errors
+from days d
+left join search_stats ss on ss.day = d.day
+left join reply_stats rs on rs.day = d.day
+left join copy_stats cs on cs.day = d.day
+left join inspect_stats is2 on is2.day = d.day
+left join error_stats es on es.day = d.day
+order by d.day desc;
 
 -- ─── ROW LEVEL SECURITY ─────────────────────────────────────────────────────
 alter table sessions enable row level security;

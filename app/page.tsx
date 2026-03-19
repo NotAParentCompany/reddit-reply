@@ -244,7 +244,7 @@ export default function Page() {
     } finally { setSearching(false) }
   }
 
-  async function generateReply(postId: string, post: { title: string; selftext: string; subreddit: string }) {
+  async function generateReply(postId: string, post: { title: string; selftext: string; subreddit: string }, commentReply?: { author: string; body: string; score: number }) {
     setGenerating(g => ({ ...g, [postId]: true }))
     try {
       const res = await fetch('/api/generate', {
@@ -257,7 +257,8 @@ export default function Page() {
           productContext: productSaved ? `${productInfo.name} — ${productInfo.description}` : '',
           customContext: customCtx[postId] || '',
           productInfo: productSaved ? productInfo : undefined,
-          systemPrompt: systemPrompt !== DEFAULT_PROMPT ? systemPrompt : undefined,
+          systemPrompt: (!commentReply && systemPrompt !== DEFAULT_PROMPT) ? systemPrompt : undefined,
+          commentReply: commentReply || undefined,
         }),
       })
       const data = await res.json()
@@ -566,7 +567,7 @@ export default function Page() {
                             <button
                               style={{ ...S.btn, ...S.btnSm, opacity: generating[cId] ? 0.5 : 1 }}
                               disabled={generating[cId]}
-                              onClick={() => generateReply(cId, { title: `Reply to u/${c.author}'s comment: "${c.body.slice(0, 200)}"`, selftext: `Original post: ${inspectResult.post.title}\n\nComment by u/${c.author}:\n${c.body}`, subreddit: inspectResult.post.subreddit })}
+                              onClick={() => generateReply(cId, { title: inspectResult.post.title, selftext: inspectResult.post.selftext, subreddit: inspectResult.post.subreddit }, { author: c.author, body: c.body, score: c.score })}
                             >
                               {generating[cId] ? '...' : '✨ Reply'}
                             </button>

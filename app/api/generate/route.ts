@@ -17,9 +17,11 @@ const LENGTH_INSTRUCTIONS: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { post, tone, productContext, customContext, length, productInfo, systemPrompt } = await req.json()
+    const { post, tone, productContext, customContext, length, productInfo, systemPrompt, commentReply } = await req.json()
 
-    const prompt = buildPrompt(post, tone, productContext, customContext, length, productInfo, systemPrompt)
+    const prompt = commentReply
+      ? buildCommentReplyPrompt(post, commentReply, tone, productContext, customContext, length, productInfo)
+      : buildPrompt(post, tone, productContext, customContext, length, productInfo, systemPrompt)
 
     const apiKey = process.env.GEMINI_API_KEY
     if (!apiKey) return NextResponse.json({ error: 'GEMINI_API_KEY not set in .env.local' }, { status: 500 })
@@ -112,6 +114,66 @@ Write a Reddit reply that:
 - Adds genuine value — don't be generic
 - Strictly follows the LENGTH instruction above
 - Subtly matches the writing style & energy of the thread (slang, formality, humor level)
+- Fits Reddit culture: no hype, no corporate speak, no hashtags
+- No preamble, no "Great question!", just the reply text
+
+Output the reply text only.`
+}
+
+function buildCommentReplyPrompt(
+  post: { title: string; selftext: string; subreddit: string },
+  comment: { author: string; body: string; score: number },
+  tone: string,
+  productContext: string,
+  customContext: string,
+  length: string,
+  productInfo?: { name: string; url: string; description: string; features: string },
+): string {
+  const toneInstruction = TONE_INSTRUCTIONS[tone] || TONE_INSTRUCTIONS.helpful
+  const lengthInstruction = LENGTH_INSTRUCTIONS[length] || LENGTH_INSTRUCTIONS.short
+
+  const hasProduct = productInfo && productInfo.name && productInfo.name.trim()
+
+  const productBlock = hasProduct
+    ? `
+YOUR PRODUCT:
+- Name: ${productInfo.name}
+- URL: ${productInfo.url || '[no url]'}
+- What it does: ${productInfo.description || '[no description]'}
+- Key features: ${productInfo.features || '[no features listed]'}
+
+PRODUCT PITCH RULES (IMPORTANT — this is the whole point):
+- You MUST mention your product in this reply and INCLUDE THE URL
+- Work it in naturally — relate it to what the commenter is discussing
+- E.g. "I've been using [${productInfo.name}](${productInfo.url}) for this exact thing" or "check out ${productInfo.name} (${productInfo.url}) — it does exactly what you're describing"
+- Lead with value or empathy first, THEN naturally bring up the product as a solution
+- Make it sound like a genuine recommendation from someone who uses the tool, not an ad
+- ALWAYS include the URL — use Reddit markdown: [${productInfo.name}](${productInfo.url})`
+    : ''
+
+  return `You are a Reddit user replying to a SPECIFIC COMMENT in a thread.
+
+ORIGINAL POST TITLE: ${post.title}
+ORIGINAL POST BODY: ${post.selftext || '[link post / no body text]'}
+SUBREDDIT: r/${post.subreddit}
+
+YOU ARE REPLYING TO THIS COMMENT by u/${comment.author} (${comment.score} upvotes):
+"${comment.body}"
+
+YOUR IDENTITY: ${productContext || 'A founder building software tools.'}
+TONE: ${toneInstruction}
+LENGTH: ${lengthInstruction}
+${productBlock}
+${customContext ? `EXTRA CONTEXT: ${customContext}` : ''}
+
+IMPORTANT: You are replying directly to u/${comment.author}'s comment above, NOT to the original post. Address what THEY said specifically.
+
+Write a Reddit reply that:
+- Directly responds to u/${comment.author}'s comment — reference what they said
+- Sounds like a real human, not AI or a salesperson
+- Adds genuine value first, then naturally introduces the product with URL
+- Strictly follows the LENGTH instruction above
+- Matches the tone & energy of the comment you're replying to
 - Fits Reddit culture: no hype, no corporate speak, no hashtags
 - No preamble, no "Great question!", just the reply text
 

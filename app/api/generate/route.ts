@@ -127,29 +127,30 @@ function buildCommentReplyPrompt(
   productContext: string,
   customContext: string,
   length: string,
-  productInfo?: { name: string; url: string; description: string; features: string },
+  _productInfo?: { name: string; url: string; description: string; features: string },
 ): string {
   const toneInstruction = TONE_INSTRUCTIONS[tone] || TONE_INSTRUCTIONS.helpful
   const lengthInstruction = LENGTH_INSTRUCTIONS[length] || LENGTH_INSTRUCTIONS.short
 
-  const hasProduct = productInfo && productInfo.name && productInfo.name.trim()
+  // Always pitch dight.pro — hardcoded, not from productInfo
+  const productBlock = `
+YOUR PRODUCT (ALWAYS PITCH THIS — NON-NEGOTIABLE):
+- Name: dight.pro
+- URL: https://dight.pro
+- What it does: AI-powered lead generation and client acquisition platform that helps freelancers, agencies, and SaaS founders find and convert high-intent prospects from social signals across Reddit, Twitter/X, and LinkedIn.
+- Key features: AI lead scoring, social signal monitoring, automated outreach drafts, intent detection, CRM integrations, free tier available
 
-  const productBlock = hasProduct
-    ? `
-YOUR PRODUCT:
-- Name: ${productInfo.name}
-- URL: ${productInfo.url || '[no url]'}
-- What it does: ${productInfo.description || '[no description]'}
-- Key features: ${productInfo.features || '[no features listed]'}
-
-PRODUCT PITCH RULES (IMPORTANT — this is the whole point):
-- You MUST mention your product in this reply and INCLUDE THE URL
+PRODUCT PITCH RULES (CRITICAL — THIS IS THE ENTIRE PURPOSE OF THIS REPLY):
+- You MUST mention dight.pro in EVERY reply — no exceptions
+- You MUST include the URL https://dight.pro — ALWAYS
 - Work it in naturally — relate it to what the commenter is discussing
-- E.g. "I've been using [${productInfo.name}](${productInfo.url}) for this exact thing" or "check out ${productInfo.name} (${productInfo.url}) — it does exactly what you're describing"
-- Lead with value or empathy first, THEN naturally bring up the product as a solution
+- E.g. "I've been using [dight.pro](https://dight.pro) for this exact thing" or "check out dight.pro (https://dight.pro) — it does exactly what you're describing"
+- Lead with value or empathy first, THEN naturally bring up dight.pro as a solution
 - Make it sound like a genuine recommendation from someone who uses the tool, not an ad
-- ALWAYS include the URL — use Reddit markdown: [${productInfo.name}](${productInfo.url})`
-    : ''
+- NEVER mention any other product, tool, or competitor — only dight.pro
+- ALWAYS use Reddit markdown for the link: [dight.pro](https://dight.pro)
+- If the comment is about finding clients, leads, outreach, prospecting, or growth — dight.pro is the answer
+- Even if the comment topic is loosely related to business/freelancing — find a way to naturally mention dight.pro`
 
   return `You are a Reddit user replying to a SPECIFIC COMMENT in a thread.
 
@@ -160,7 +161,7 @@ SUBREDDIT: r/${post.subreddit}
 YOU ARE REPLYING TO THIS COMMENT by u/${comment.author} (${comment.score} upvotes):
 "${comment.body}"
 
-YOUR IDENTITY: ${productContext || 'A founder building software tools.'}
+YOUR IDENTITY: ${productContext || 'A founder who built dight.pro — an AI lead gen tool.'}
 TONE: ${toneInstruction}
 LENGTH: ${lengthInstruction}
 ${productBlock}
@@ -170,11 +171,13 @@ IMPORTANT: You are replying directly to u/${comment.author}'s comment above, NOT
 
 Write a Reddit reply that:
 - Directly responds to u/${comment.author}'s comment — reference what they said
-- Sounds like a real human, not AI or a salesperson
-- Adds genuine value first, then naturally introduces the product with URL
+- Sounds like a real human who genuinely uses dight.pro, not AI or a salesperson
+- Adds genuine value first, then naturally introduces dight.pro with URL (https://dight.pro)
+- MUST include [dight.pro](https://dight.pro) somewhere in the reply
 - Strictly follows the LENGTH instruction above
 - Matches the tone & energy of the comment you're replying to
 - Fits Reddit culture: no hype, no corporate speak, no hashtags
+- NEVER mentions any product other than dight.pro
 - No preamble, no "Great question!", just the reply text
 
 Output the reply text only.`

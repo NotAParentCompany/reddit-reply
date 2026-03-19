@@ -186,7 +186,6 @@ export default function Page() {
   // ── Load persisted state on mount ──
   useEffect(() => {
     setKeywords(loadLocal<string[]>('rr_keywords', []))
-    setSubreddits(loadLocal<string[]>('rr_subreddits', []))
     setSystemPrompt(loadLocal<string>('rr_system_prompt', DEFAULT_PROMPT))
     setKeywordPacks(loadLocal<KeywordPack[]>('rr_keyword_packs', DEFAULT_KEYWORD_PACKS))
     const savedProduct = loadLocal<ProductInfo | null>('rr_product_info', null)
@@ -194,12 +193,34 @@ export default function Page() {
       setProductInfo(savedProduct)
       setProductSaved(true)
     }
+    // Load subreddits: Supabase first, fallback to localStorage
+    fetch('/api/subreddits').then(r => r.json()).then(d => {
+      if (d.subreddits?.length) {
+        setSubreddits(d.subreddits)
+      } else {
+        setSubreddits(loadLocal<string[]>('rr_subreddits', []))
+      }
+    }).catch(() => {
+      setSubreddits(loadLocal<string[]>('rr_subreddits', []))
+    })
     hydrated.current = true
   }, [])
 
   // ── Auto-save keywords, subreddits, prompt to localStorage ──
   useEffect(() => { if (hydrated.current) saveLocal('rr_keywords', keywords) }, [keywords])
-  useEffect(() => { if (hydrated.current) saveLocal('rr_subreddits', subreddits) }, [subreddits])
+  useEffect(() => {
+    if (hydrated.current) {
+      saveLocal('rr_subreddits', subreddits)
+      // Also persist to Supabase
+      if (subreddits.length > 0) {
+        fetch('/api/subreddits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subreddits }),
+        }).catch(() => {})
+      }
+    }
+  }, [subreddits])
   useEffect(() => { if (hydrated.current) saveLocal('rr_system_prompt', systemPrompt) }, [systemPrompt])
   useEffect(() => { if (hydrated.current) saveLocal('rr_keyword_packs', keywordPacks) }, [keywordPacks])
 

@@ -89,7 +89,6 @@ export default function Page() {
   const [subreddits, setSubreddits] = useState('')
   const [sort, setSort] = useState('new')
   const [limit, setLimit] = useState('25')
-  const [productContext, setProductContext] = useState('dight.pro — AI lead scoring tool for freelancers and small agencies')
   const [posts, setPosts] = useState<RedditPost[]>([])
   const [searching, setSearching] = useState(false)
   const [status, setStatus] = useState<{ state: 'idle' | 'active' | 'loading'; text: string }>({ state: 'idle', text: 'Ready.' })
@@ -152,7 +151,7 @@ export default function Page() {
           post,
           tone: tones[postId] || 'helpful',
           length: lengths[postId] || 'short',
-          productContext,
+          productContext: productSaved ? `${productInfo.name} — ${productInfo.description}` : '',
           customContext: customCtx[postId] || '',
           productInfo: productSaved ? productInfo : undefined,
         }),
@@ -232,20 +231,6 @@ export default function Page() {
             <div style={S.headerTag}>Reply Engine</div>
           </div>
         </header>
-
-        <div style={S.panel}>
-          <div style={S.panelTitle}>⚙ Config</div>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end' }}>
-            <div style={{ flex: 1 }}>
-              <label style={S.label}>AI Provider</label>
-              <div style={{ ...S.input, background: '#f0f0f0', color: '#888', cursor: 'default' }}>Gemini 3.1 Flash Lite</div>
-            </div>
-            <div style={{ flex: 2 }}>
-              <label style={S.label}>Your Identity / Context</label>
-              <input style={S.input} value={productContext} onChange={e => setProductContext(e.target.value)} placeholder="e.g. A founder building AI tools for freelancers" />
-            </div>
-          </div>
-        </div>
 
         <div style={S.tabs}>
           {tabLabels.map(t => (

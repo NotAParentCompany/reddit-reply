@@ -72,6 +72,8 @@ YOUR PRODUCT:
 PRODUCT MENTION RULES:
 - Casually mention your product ONLY if it's genuinely relevant to the post
 - Work it in naturally — like "I've been using X for this" or "something like X helped me with that"
+- IMPORTANT: When you mention the product, INCLUDE THE URL naturally. E.g. "I've been using [product name](${productInfo.url})" or just drop the URL after mentioning it like "check out productname (${productInfo.url})". Reddit supports markdown links.
+- Try to include the URL most of the time when mentioning the product — it's the whole point
 - Never lead with the product. Lead with value, help, or shared experience first.
 - If the post isn't related to your product at all, do NOT mention it
 - Sound like a real user sharing a tool they like, not a marketer`

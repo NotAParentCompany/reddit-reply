@@ -17,9 +17,9 @@ const LENGTH_INSTRUCTIONS: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { post, tone, productContext, customContext, length, productInfo } = await req.json()
+    const { post, tone, productContext, customContext, length, productInfo, systemPrompt } = await req.json()
 
-    const prompt = buildPrompt(post, tone, productContext, customContext, length, productInfo)
+    const prompt = buildPrompt(post, tone, productContext, customContext, length, productInfo, systemPrompt)
 
     const apiKey = process.env.GEMINI_API_KEY
     if (!apiKey) return NextResponse.json({ error: 'GEMINI_API_KEY not set in .env.local' }, { status: 500 })
@@ -54,7 +54,8 @@ function buildPrompt(
   productContext: string,
   customContext: string,
   length: string,
-  productInfo?: { name: string; url: string; description: string; features: string }
+  productInfo?: { name: string; url: string; description: string; features: string },
+  systemPrompt?: string
 ): string {
   const toneInstruction = TONE_INSTRUCTIONS[tone] || TONE_INSTRUCTIONS.helpful
   const lengthInstruction = LENGTH_INSTRUCTIONS[length] || LENGTH_INSTRUCTIONS.short
@@ -78,6 +79,19 @@ PRODUCT MENTION RULES:
 - If the post isn't related to your product at all, do NOT mention it
 - Sound like a real user sharing a tool they like, not a marketer`
     : ''
+
+  // If a custom system prompt is provided, fill in template variables
+  if (systemPrompt) {
+    return systemPrompt
+      .replace(/\{\{post_title\}\}/g, post.title)
+      .replace(/\{\{post_body\}\}/g, post.selftext || '[link post / no body text]')
+      .replace(/\{\{subreddit\}\}/g, post.subreddit)
+      .replace(/\{\{identity\}\}/g, productContext || 'A founder building software tools.')
+      .replace(/\{\{tone_instruction\}\}/g, toneInstruction)
+      .replace(/\{\{length_instruction\}\}/g, lengthInstruction)
+      .replace(/\{\{product_block\}\}/g, productBlock)
+      .replace(/\{\{custom_context\}\}/g, customContext ? `EXTRA CONTEXT: ${customContext}` : '')
+  }
 
   return `You are a Reddit user replying to this post.
 

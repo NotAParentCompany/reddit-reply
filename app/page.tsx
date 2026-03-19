@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 /* ─── TYPES ─────────────────────────────────────────────────────────── */
 interface RedditPost {
@@ -30,7 +30,59 @@ interface ProductInfo {
   features: string
 }
 
-type Tab = 'search' | 'inspect' | 'product'
+interface KeywordPack {
+  name: string
+  keywords: string[]
+}
+
+type Tab = 'search' | 'inspect' | 'product' | 'prompt'
+
+/* ─── KEYWORD PACKS ─────────────────────────────────────────────────── */
+const DEFAULT_KEYWORD_PACKS: KeywordPack[] = [
+  { name: '🔥 Quick Start', keywords: ['find clients', 'no clients', 'lead generation', 'cold outreach', 'freelance clients'] },
+  { name: '🎯 Intent', keywords: ['find clients', 'get clients', 'lead generation', 'finding clients', 'how to find clients', 'client outreach', 'cold outreach', 'prospecting', 'getting clients', 'new clients'] },
+  { name: '😤 Pain', keywords: ['no clients', 'struggling to find clients', 'slow month', 'dry pipeline', 'need more clients', 'lost a client', 'client churn', 'not enough work'] },
+  { name: '🏷 Niche', keywords: ['web design clients', 'freelance clients', 'SMMA clients', 'marketing agency clients', 'SEO clients', 'social media clients'] },
+  { name: '🔧 Tools', keywords: ['Apollo alternative', 'lead gen tool', 'Clay alternative', 'LinkedIn outreach', 'cold email tool', 'prospect finder'] },
+]
+
+/* ─── DEFAULT PROMPT ─────────────────────────────────────────────────── */
+const DEFAULT_PROMPT = `You are a Reddit user replying to this post.
+
+POST TITLE: {{post_title}}
+POST BODY: {{post_body}}
+SUBREDDIT: r/{{subreddit}}
+
+YOUR IDENTITY: {{identity}}
+TONE: {{tone_instruction}}
+LENGTH: {{length_instruction}}
+{{product_block}}
+{{custom_context}}
+
+TONE MATCHING: Study the subreddit's vibe and how the post is written. If the OP uses casual slang, lowercase, or abbreviations — mirror that slightly. If it's a serious/technical sub, match that energy. Blend your tone with the thread's natural voice so your reply feels native to the conversation.
+
+Write a Reddit reply that:
+- Sounds like a real human, not AI or a salesperson
+- Adds genuine value — don't be generic
+- Strictly follows the LENGTH instruction above
+- Subtly matches the writing style & energy of the thread (slang, formality, humor level)
+- Fits Reddit culture: no hype, no corporate speak, no hashtags
+- No preamble, no "Great question!", just the reply text
+
+Output the reply text only.`
+
+/* ─── LOCALSTORAGE HELPERS ──────────────────────────────────────────── */
+function loadLocal<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
+  } catch { return fallback }
+}
+function saveLocal(key: string, value: unknown) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(key, JSON.stringify(value))
+}
 
 /* ─── HELPERS ───────────────────────────────────────────────────────── */
 function timeAgo(unix: number) {
@@ -72,6 +124,9 @@ const S: Record<string, React.CSSProperties> = {
   divider: { height: 1, background: '#e0e0e0', margin: '18px 0' },
   lengthBar: { display: 'flex', gap: 0, background: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 10, padding: 3, overflow: 'hidden' },
   lengthPill: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, fontWeight: 600, padding: '7px 14px', border: 'none', cursor: 'pointer', borderRadius: 8, transition: 'all 0.15s', whiteSpace: 'nowrap' as const },
+  packBar: { display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 12 },
+  packBtn: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, fontWeight: 600, padding: '6px 14px', border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#888', transition: 'all 0.15s' },
+  packBtnActive: { background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.3)', color: '#e03d00' },
 }
 
 const LENGTH_OPTIONS = [
@@ -105,7 +160,31 @@ export default function Page() {
   const [inspectResult, setInspectResult] = useState<InspectResult | null>(null)
   const [productInfo, setProductInfo] = useState<ProductInfo>({ name: '', url: '', description: '', features: '' })
   const [productSaved, setProductSaved] = useState(false)
+  const [systemPrompt, setSystemPrompt] = useState(DEFAULT_PROMPT)
+  const [keywordPacks, setKeywordPacks] = useState<KeywordPack[]>(DEFAULT_KEYWORD_PACKS)
+  const [promptSaved, setPromptSaved] = useState(true)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hydrated = useRef(false)
+
+  // ── Load persisted state on mount ──
+  useEffect(() => {
+    setKeywords(loadLocal<string[]>('rr_keywords', []))
+    setSubreddits(loadLocal<string>('rr_subreddits', ''))
+    setSystemPrompt(loadLocal<string>('rr_system_prompt', DEFAULT_PROMPT))
+    setKeywordPacks(loadLocal<KeywordPack[]>('rr_keyword_packs', DEFAULT_KEYWORD_PACKS))
+    const savedProduct = loadLocal<ProductInfo | null>('rr_product_info', null)
+    if (savedProduct && savedProduct.name) {
+      setProductInfo(savedProduct)
+      setProductSaved(true)
+    }
+    hydrated.current = true
+  }, [])
+
+  // ── Auto-save keywords, subreddits, prompt to localStorage ──
+  useEffect(() => { if (hydrated.current) saveLocal('rr_keywords', keywords) }, [keywords])
+  useEffect(() => { if (hydrated.current) saveLocal('rr_subreddits', subreddits) }, [subreddits])
+  useEffect(() => { if (hydrated.current) saveLocal('rr_system_prompt', systemPrompt) }, [systemPrompt])
+  useEffect(() => { if (hydrated.current) saveLocal('rr_keyword_packs', keywordPacks) }, [keywordPacks])
 
   function showToast(msg: string, type = '') {
     setToast({ msg, type })
@@ -154,6 +233,7 @@ export default function Page() {
           productContext: productSaved ? `${productInfo.name} — ${productInfo.description}` : '',
           customContext: customCtx[postId] || '',
           productInfo: productSaved ? productInfo : undefined,
+          systemPrompt: systemPrompt !== DEFAULT_PROMPT ? systemPrompt : undefined,
         }),
       })
       const data = await res.json()
@@ -207,6 +287,7 @@ export default function Page() {
     { key: 'search', label: '🔍 Search' },
     { key: 'inspect', label: '🔗 Inspect' },
     { key: 'product', label: '📦 Product' },
+    { key: 'prompt', label: '🧠 Prompt' },
   ]
 
   return (
@@ -276,11 +357,11 @@ export default function Page() {
               />
             </div>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <button style={{ ...S.btn, opacity: productInfo.name.trim() ? 1 : 0.5 }} disabled={!productInfo.name.trim()} onClick={() => { setProductSaved(true); showToast(`Product "${productInfo.name}" saved — AI will use it in replies`, 'success') }}>
+              <button style={{ ...S.btn, opacity: productInfo.name.trim() ? 1 : 0.5 }} disabled={!productInfo.name.trim()} onClick={() => { setProductSaved(true); saveLocal('rr_product_info', productInfo); showToast(`Product "${productInfo.name}" saved — AI will use it in replies`, 'success') }}>
                 💾 Save Product
               </button>
               {productSaved && (
-                <button style={S.btnGhost} onClick={() => { setProductSaved(false); showToast('Product removed from replies', '') }}>
+                <button style={S.btnGhost} onClick={() => { setProductSaved(false); saveLocal('rr_product_info', null); showToast('Product removed from replies', '') }}>
                   🗑 Clear
                 </button>
               )}
@@ -293,7 +374,24 @@ export default function Page() {
         {tab === 'search' && (
           <>
             <div style={S.panel}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' as const }}>
+              {/* ── Keyword Packs ── */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ ...S.label, marginBottom: 10 }}>Keyword Packs</label>
+                <div style={S.packBar}>
+                  {keywordPacks.map((pack, i) => (
+                    <button
+                      key={i}
+                      style={{ ...S.packBtn, ...(JSON.stringify(keywords) === JSON.stringify(pack.keywords) ? S.packBtnActive : {}) }}
+                      onClick={() => { setKeywords(pack.keywords); showToast(`Loaded "${pack.name}" pack`, 'success') }}
+                      title={pack.keywords.join(', ')}
+                    >
+                      {pack.name} ({pack.keywords.length})
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={S.divider} />
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' as const, marginTop: 16 }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <label style={S.label}>Keywords</label>
                   <input style={S.input} value={kwInput} onChange={e => setKwInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addKeyword()} placeholder="lead generation, find clients, outreach..." />
@@ -438,6 +536,77 @@ export default function Page() {
                 </div>
               </>
             )}
+          </>
+        )}
+
+        {/* ── PROMPT TAB ── */}
+        {tab === 'prompt' && (
+          <>
+            <div style={S.panel}>
+              <div style={S.panelTitle}>🧠 AI System Prompt</div>
+              <p style={{ fontSize: 14, color: '#888', marginBottom: 16, lineHeight: 1.6 }}>
+                Customize the system prompt that drives reply generation. Use these placeholders — they{"'"}ll be replaced at generation time:
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: 18 }}>
+                {['{{post_title}}', '{{post_body}}', '{{subreddit}}', '{{identity}}', '{{tone_instruction}}', '{{length_instruction}}', '{{product_block}}', '{{custom_context}}'].map(p => (
+                  <code key={p} style={{ fontSize: 12, fontFamily: 'IBM Plex Mono, monospace', background: 'rgba(255,69,0,0.06)', border: '1px solid rgba(255,69,0,0.2)', borderRadius: 5, padding: '3px 8px', color: '#e03d00' }}>{p}</code>
+                ))}
+              </div>
+              <textarea
+                style={{ ...S.input, minHeight: 360, resize: 'vertical' as const, lineHeight: 1.7, fontSize: 14 }}
+                value={systemPrompt}
+                onChange={e => { setSystemPrompt(e.target.value); setPromptSaved(false) }}
+                spellCheck={false}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button style={S.btn} onClick={() => { saveLocal('rr_system_prompt', systemPrompt); setPromptSaved(true); showToast('Prompt saved', 'success') }}>
+                    💾 Save Prompt
+                  </button>
+                  <button style={S.btnGhost} onClick={() => { setSystemPrompt(DEFAULT_PROMPT); setPromptSaved(false); showToast('Reset to default prompt', '') }}>
+                    ↩ Reset Default
+                  </button>
+                </div>
+                {promptSaved && <span style={{ fontSize: 13, color: '#16a34a' }}>✓ Saved</span>}
+                {!promptSaved && <span style={{ fontSize: 13, color: '#ff4500' }}>● Unsaved changes</span>}
+              </div>
+            </div>
+
+            <div style={S.panel}>
+              <div style={S.panelTitle}>📦 Keyword Packs Manager</div>
+              <p style={{ fontSize: 14, color: '#888', marginBottom: 16, lineHeight: 1.6 }}>
+                Manage reusable keyword packs. Click a pack name in the Search tab to instantly load it.
+              </p>
+              {keywordPacks.map((pack, i) => (
+                <div key={i} style={{ padding: '14px 0', borderBottom: i < keywordPacks.length - 1 ? '1px solid #e0e0e0' : 'none' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <input
+                      style={{ ...S.input, width: 200, fontWeight: 600, fontSize: 14 }}
+                      value={pack.name}
+                      onChange={e => { const p = [...keywordPacks]; p[i] = { ...p[i], name: e.target.value }; setKeywordPacks(p) }}
+                    />
+                    <button style={{ ...S.btnGhost, color: '#e03d00', borderColor: 'rgba(255,69,0,0.3)', fontSize: 13 }} onClick={() => { const p = keywordPacks.filter((_, j) => j !== i); setKeywordPacks(p); showToast('Pack deleted', '') }}>
+                      🗑 Delete
+                    </button>
+                  </div>
+                  <textarea
+                    style={{ ...S.input, minHeight: 50, resize: 'vertical' as const, fontSize: 13, lineHeight: 1.6 }}
+                    value={pack.keywords.join(', ')}
+                    onChange={e => { const p = [...keywordPacks]; p[i] = { ...p[i], keywords: e.target.value.split(',').map(k => k.trim()).filter(Boolean) }; setKeywordPacks(p) }}
+                  />
+                </div>
+              ))}
+              <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
+                <button style={S.btnGhost} onClick={() => setKeywordPacks([...keywordPacks, { name: '📌 New Pack', keywords: [] }])}>
+                  + Add Pack
+                </button>
+                {keywords.length > 0 && (
+                  <button style={S.btnGhost} onClick={() => { setKeywordPacks([...keywordPacks, { name: `💾 Saved (${new Date().toLocaleDateString()})`, keywords: [...keywords] }]); showToast('Current keywords saved as pack', 'success') }}>
+                    💾 Save Current Keywords as Pack
+                  </button>
+                )}
+              </div>
+            </div>
           </>
         )}
       </div>

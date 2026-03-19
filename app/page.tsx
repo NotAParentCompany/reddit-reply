@@ -226,7 +226,7 @@ export default function Page() {
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end' }}>
             <div style={{ flex: 1 }}>
               <label style={S.label}>AI Provider</label>
-              <div style={{ ...S.input, background: '#f0f0f0', color: '#888', cursor: 'default' }}>Gemini 2.0 Flash</div>
+              <div style={{ ...S.input, background: '#f0f0f0', color: '#888', cursor: 'default' }}>Gemini 3.1 Flash Lite</div>
             </div>
             <div style={{ flex: 2 }}>
               <label style={S.label}>Your Product Context</label>

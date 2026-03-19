@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     if (!apiKey) return NextResponse.json({ error: 'GEMINI_API_KEY not set in .env.local' }, { status: 500 })
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

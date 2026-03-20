@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
-const UA = 'web:reddit-reply-tool:v1.0 (by /u/dight_pro)'
+const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+const BOT_UA = 'web:reddit-reply-tool:v1.0 (by /u/dight_pro)'
 
 export async function GET() {
   const debug: Record<string, unknown> = {
@@ -12,10 +13,9 @@ export async function GET() {
     },
   }
 
-  // Step 1: Try Reddit OAuth
+  // Test 1: Reddit OAuth
   const clientId = process.env.REDDIT_CLIENT_ID
   const clientSecret = process.env.REDDIT_CLIENT_SECRET
-
   if (clientId && clientSecret) {
     try {
       const oauthRes = await fetch('https://www.reddit.com/api/v1/access_token', {
@@ -23,64 +23,72 @@ export async function GET() {
         headers: {
           'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64'),
           'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': UA,
+          'User-Agent': BOT_UA,
         },
         body: 'grant_type=client_credentials',
       })
       const oauthText = await oauthRes.text()
-      debug.oauth = {
-        status: oauthRes.status,
-        body: oauthText.slice(0, 500),
-      }
-
-      if (oauthRes.ok) {
-        const oauthData = JSON.parse(oauthText)
-        const token = oauthData.access_token
-
-        // Step 2: Try OAuth search
-        const searchUrl = `https://oauth.reddit.com/r/all/search?q=python&sort=new&limit=3&restrict_sr=0&t=week&raw_json=1&type=link`
-        const searchRes = await fetch(searchUrl, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'User-Agent': UA,
-            'Accept': 'application/json',
-          },
-        })
-        const searchText = await searchRes.text()
-        debug.oauth_search = {
-          status: searchRes.status,
-          body_length: searchText.length,
-          body_preview: searchText.slice(0, 300),
-          posts_found: (() => {
-            try { return JSON.parse(searchText)?.data?.children?.length || 0 } catch { return 'parse_error' }
-          })(),
-        }
-      }
+      debug.oauth = { status: oauthRes.status, body: oauthText.slice(0, 500) }
     } catch (err) {
       debug.oauth_error = String(err)
     }
   }
 
-  // Step 3: Try public API (will likely fail on Vercel but good to confirm)
+  // Test 2: PullPush.io
   try {
-    const pubUrl = 'https://www.reddit.com/r/all/search.json?q=python&sort=new&limit=3&restrict_sr=0&t=week&raw_json=1'
-    const pubRes = await fetch(pubUrl, {
-      headers: {
-        'User-Agent': UA,
-        'Accept': 'application/json',
-      },
+    const ppRes = await fetch('https://api.pullpush.io/reddit/search/submission/?q=python&size=3', {
+      headers: { 'User-Agent': BROWSER_UA },
     })
-    const pubText = await pubRes.text()
-    debug.public_api = {
-      status: pubRes.status,
-      body_length: pubText.length,
-      body_preview: pubText.slice(0, 300),
+    const ppText = await ppRes.text()
+    debug.pullpush = {
+      status: ppRes.status,
+      body_length: ppText.length,
       posts_found: (() => {
-        try { return JSON.parse(pubText)?.data?.children?.length || 0 } catch { return 'parse_error' }
+        try { return JSON.parse(ppText)?.data?.length || 0 } catch { return 'parse_error' }
       })(),
+      body_preview: ppText.slice(0, 200),
     }
   } catch (err) {
-    debug.public_api_error = String(err)
+    debug.pullpush_error = String(err)
+  }
+
+  // Test 3: old.reddit.com with browser UA
+  try {
+    const oldRes = await fetch('https://old.reddit.com/r/all/search.json?q=python&sort=new&limit=3&restrict_sr=0&t=week&raw_json=1', {
+      headers: {
+        'User-Agent': BROWSER_UA,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    })
+    const oldText = await oldRes.text()
+    const isJson = oldText.startsWith('{') || oldText.startsWith('[')
+    debug.old_reddit = {
+      status: oldRes.status,
+      is_json: isJson,
+      body_length: oldText.length,
+      posts_found: isJson ? (() => { try { return JSON.parse(oldText)?.data?.children?.length || 0 } catch { return 'parse_error' } })() : 0,
+      body_preview: oldText.slice(0, 200),
+    }
+  } catch (err) {
+    debug.old_reddit_error = String(err)
+  }
+
+  // Test 4: www.reddit.com (original - likely blocked)
+  try {
+    const wwwRes = await fetch('https://www.reddit.com/r/all/search.json?q=python&sort=new&limit=3&restrict_sr=0&t=week&raw_json=1', {
+      headers: { 'User-Agent': BROWSER_UA, 'Accept': 'application/json' },
+    })
+    const wwwText = await wwwRes.text()
+    const isJson = wwwText.startsWith('{') || wwwText.startsWith('[')
+    debug.www_reddit = {
+      status: wwwRes.status,
+      is_json: isJson,
+      body_length: wwwText.length,
+      posts_found: isJson ? (() => { try { return JSON.parse(wwwText)?.data?.children?.length || 0 } catch { return 'parse_error' } })() : 0,
+    }
+  } catch (err) {
+    debug.www_reddit_error = String(err)
   }
 
   return NextResponse.json(debug, { status: 200 })

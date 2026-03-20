@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const UA = 'web:reddit-reply-tool:v1.0 (by /u/dight_pro)'
+const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+const BOT_UA = 'web:reddit-reply-tool:v1.0 (by /u/dight_pro)'
 
 // ── Reddit OAuth token cache ──
 let cachedToken: { token: string; expiresAt: number } | null = null
@@ -18,7 +19,7 @@ async function getRedditToken(): Promise<string | null> {
       headers: {
         'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64'),
         'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': UA,
+        'User-Agent': BOT_UA,
       },
       body: 'grant_type=client_credentials',
     })
@@ -27,6 +28,48 @@ async function getRedditToken(): Promise<string | null> {
     cachedToken = { token: data.access_token, expiresAt: Date.now() + (data.expires_in * 1000) }
     return cachedToken.token
   } catch { return null }
+}
+
+// Fetch thread JSON with multiple fallback strategies
+async function fetchThreadJSON(url: string, path: string | null): Promise<unknown[] | null> {
+  // Strategy 1: OAuth
+  const token = await getRedditToken()
+  if (token && path) {
+    try {
+      const res = await fetch(`https://oauth.reddit.com${path}.json?limit=20&raw_json=1`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'User-Agent': BOT_UA },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data) && data.length >= 2) return data
+      }
+    } catch { /* fall through */ }
+  }
+
+  // Strategy 2: old.reddit.com with browser UA
+  for (const domain of ['old.reddit.com', 'www.reddit.com']) {
+    try {
+      const cleanUrl = path
+        ? `https://${domain}${path}.json?limit=20&raw_json=1`
+        : url.replace(/\/$/, '').replace(/www\.reddit\.com|reddit\.com/, domain) + '.json?limit=20&raw_json=1'
+
+      const res = await fetch(cleanUrl, {
+        headers: {
+          'User-Agent': BROWSER_UA,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+      })
+      if (!res.ok) continue
+      const text = await res.text()
+      if (text.startsWith('[') || text.startsWith('{')) {
+        const data = JSON.parse(text)
+        if (Array.isArray(data) && data.length >= 2) return data
+      }
+    } catch { continue }
+  }
+
+  return null
 }
 
 export async function POST(req: NextRequest) {
@@ -39,30 +82,12 @@ export async function POST(req: NextRequest) {
     const match = url.match(/reddit\.com(\/r\/[^?#]+)/)
     const path = match ? match[1].replace(/\/$/, '') : null
 
-    const token = await getRedditToken()
+    const data = await fetchThreadJSON(url, path)
+    if (!data) throw new Error('Could not fetch Reddit thread — all strategies failed')
 
-    let fetchUrl: string
-    const headers: Record<string, string> = {
-      'User-Agent': UA,
-      'Accept': 'application/json',
-    }
-
-    if (token && path) {
-      // Use OAuth API
-      fetchUrl = `https://oauth.reddit.com${path}.json?limit=20&raw_json=1`
-      headers['Authorization'] = `Bearer ${token}`
-    } else {
-      // Fallback to public API
-      fetchUrl = url.replace(/\/$/, '') + '.json?limit=20&raw_json=1'
-    }
-
-    const res = await fetch(fetchUrl, { headers })
-
-    if (!res.ok) throw new Error(`Could not fetch Reddit thread (${res.status})`)
-
-    const data = await res.json()
-    const post = data?.[0]?.data?.children?.[0]?.data
-    const comments = data?.[1]?.data?.children
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const post = (data as any)?.[0]?.data?.children?.[0]?.data
+    const comments = (data as any)?.[1]?.data?.children
       ?.filter((c: { kind: string }) => c.kind === 't1')
       ?.slice(0, 8)
       ?.map((c: { data: { author: string; body: string; score: number } }) => ({
